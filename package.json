@@ -5,7 +5,6 @@
   "description": "Menù settimanale e lista della spesa condivisi (PWA)",
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "start": "python3 -m http.server 8080",
-    "dati": "python3 strumenti/importa_dati.py"
+    "start": "python3 -m http.server 8080"
   }
 }

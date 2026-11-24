@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { pasqua, festivita, inizioSettimana, infoGiorno, deperibilitaGiorno, aggiungiGiorni, stagione } from "../js/calendario.js";
-import { generaPiano, chiavePasto, entroTempi, surgelabile, deperibilitaCompatibile } from "../js/pianificatore.js";
+import { generaPiano, chiavePasto, entroTempi, surgelabile, deperibilitaCompatibile, motivoNoSpostamento } from "../js/pianificatore.js";
 import { calcolaSpesa } from "../js/spesa.js";
 
 const ricette = JSON.parse(readFileSync(new URL("../data/ricette.json", import.meta.url)));
@@ -103,4 +103,15 @@ test("spesa: somma porzioni e usa il pesce surgelato da martedì", () => {
     porzioni: { [chiavePasto("2026-11-28", "cena")]: 1 } });
   assert.equal(ridotta.find((x) => x.id === "AL37").quantita, 200);
   assert.ok(idx("verdure") < idx("banco_frigo") && idx("banco_frigo") < idx("congelati"));
+});
+
+test("spostamento pasti: stesso pasto e stessa deperibilità", () => {
+  const alta = ricette.find((r) => r.pasto === "cena" && r.deperibilita === "Alta");
+  const alta2 = ricette.find((r) => r.pasto === "cena" && r.deperibilita === "Alta" && r.id !== alta.id);
+  const bassa = ricette.find((r) => r.pasto === "cena" && r.deperibilita === "Bassa");
+  assert.equal(motivoNoSpostamento("2026-11-28_cena", "2026-12-01_cena", alta, alta2), null);
+  assert.match(motivoNoSpostamento("2026-11-28_cena", "2026-12-03_cena", alta, bassa), /deperibilità/);
+  assert.match(motivoNoSpostamento("2026-11-28_cena", "2026-11-28_pranzo", alta, alta2), /pranzi con pranzi/);
+  assert.ok(motivoNoSpostamento("2026-11-28_cena", "2026-11-29_cena", alta, undefined));
+  assert.ok(motivoNoSpostamento("2026-11-28_cena", "2026-11-28_cena", alta, alta));
 });

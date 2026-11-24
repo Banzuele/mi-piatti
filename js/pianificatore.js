@@ -140,3 +140,16 @@ export function generaPiano({
   }
   return migliore;
 }
+
+// Spostamento di un pasto nel Menù: solo pranzo con pranzo e cena con cena,
+// tra ricette con lo stesso livello di deperibilità. Restituisce il motivo del
+// divieto, oppure null se lo spostamento è consentito.
+export function motivoNoSpostamento(a, b, ra, rb) {
+  if (a === b) return "Scegli un altro pasto";
+  if (!ra || !rb) return "Si può spostare solo su un altro pasto già nel menù";
+  if (a.split("_")[1] !== b.split("_")[1]) return "Si possono spostare solo pranzi con pranzi e cene con cene";
+  if (ra.deperibilita !== rb.deperibilita) {
+    return `Non si può: "${ra.nome}" ha deperibilità ${ra.deperibilita}, "${rb.nome}" ${rb.deperibilita}`;
+  }
+  return null;
+}

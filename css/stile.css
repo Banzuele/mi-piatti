@@ -220,3 +220,54 @@ details summary { cursor: pointer; color: var(--primario); padding: 6px 0; }
   background: #23302a; color: #fff; padding: 10px 12px 10px 16px; border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .25); font-size: 15px;
 }
+
+/* spostamento dei pasti: maniglia ☰ da tenere premuta */
+.maniglia {
+  flex: 0 0 40px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: var(--tenue); cursor: grab; touch-action: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: color .15s, transform .15s;
+}
+.maniglia.vuota { cursor: default; }
+.maniglia:active { color: var(--primario); }
+body.trascinando { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+body.trascinando .pasto-riga { transition: opacity .15s, background .15s; }
+.pasto-riga.sbloccata, .pasto-riga.sbloccata .pasto { background: var(--accento); }
+.pasto-riga.sbloccata { outline: 2px dashed var(--primario); outline-offset: -2px; opacity: .55; }
+.pasto-riga.sbloccata .maniglia { color: var(--primario); }
+.pasto-riga.bersaglio-ok .maniglia { color: var(--primario); }
+.pasto-riga.bersaglio-no { opacity: .35; }
+.pasto-riga.bersaglio-ok.sopra, .pasto-riga.bersaglio-ok.sopra .pasto {
+  background: var(--accento); box-shadow: inset 0 0 0 2px var(--primario);
+}
+.pasto-riga.bersaglio-no.sopra { box-shadow: inset 0 0 0 2px var(--pericolo); }
+.fantasma {
+  position: fixed; z-index: 50; pointer-events: none; margin: 0;
+  background: var(--carta); border: 2px solid var(--primario); border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .28); opacity: .95; transform: scale(1.03);
+}
+.fantasma .maniglia { color: var(--primario); cursor: grabbing; }
+.fantasma::after {
+  content: "🔓 Sbloccato"; position: absolute; top: -12px; right: 10px;
+  font-size: 11px; font-weight: 600; background: var(--primario); color: var(--primario-testo);
+  padding: 2px 8px; border-radius: 999px;
+}
+
+/* editor ricette */
+.centro-testo { text-align: center !important; }
+.btn.largo.centro-testo { margin-bottom: 12px; }
+.editor input:not([type="checkbox"]), .editor select, .editor textarea {
+  width: 100%; font: inherit; color: var(--testo); background: var(--carta);
+  border: 1px solid var(--bordo); border-radius: 8px; padding: 8px;
+}
+.editor textarea { min-height: 120px; }
+.griglia-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+fieldset.stagioni { border: 1px solid var(--bordo); border-radius: 10px; margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px; }
+.foglio label.spunta { flex-direction: row; align-items: center; gap: 6px; margin: 0; color: var(--testo); }
+.ingr-editor { display: grid; gap: 6px; margin-bottom: 8px; }
+.ingr-riga { display: flex; align-items: center; gap: 6px; }
+.ingr-riga select { flex: 1; min-width: 0; }
+.ingr-riga input { width: 76px !important; flex: 0 0 76px; }
+.ingr-riga .unita { width: 28px; font-size: 13px; color: var(--tenue); }
+.nuovo-alimento { background: var(--accento); border-radius: 10px; padding: 10px; margin: 8px 0; }
