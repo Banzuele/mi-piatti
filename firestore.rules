@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Regole di sicurezza di Firestore per Mi-Piatti.
+// Copiale nella console Firebase: Firestore Database > Regole > Pubblica.
+// Sostituisci le due email con i vostri account Google.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function membro() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'prima.email@gmail.com',
+          'seconda.email@gmail.com'
+        ];
+    }
+
+    match /famiglie/{famiglia}/{documento=**} {
+      allow read, write: if membro();
+    }
+  }
+}
