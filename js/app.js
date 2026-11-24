@@ -3,20 +3,23 @@ import { creaArchivio } from "./archivio.js";
 import {
   oggiISO, inizioSettimana, aggiungiGiorni, giorniSettimana, giornoSettimana,
   GIORNI_LUNGHI, formattaGiornoMese, intervalloSettimana, infoGiorno, festivita,
-  usaSurgelato, IMPOSTAZIONI_PREDEFINITE, daISO,
+  usaSurgelato, IMPOSTAZIONI_PREDEFINITE, daISO, formattaBreve,
 } from "./calendario.js";
 import {
   PASTI, chiavePasto, generaPiano, scegliRicetta, entroTempi, surgelabile,
   deperibilitaCompatibile, REGOLE_SETTIMANA, motivoNoSpostamento as motivoNoSpost,
 } from "./pianificatore.js";
 import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita } from "./spesa.js";
+import {
+  chiaveProdotto, leggiNumero, prezzoUnitario, pulisciPrezzo, storico, statistiche, formattaEuro, formattaUnitario,
+} from "./prezzi.js";
 
 // ---------------------------------------------------------------- stato
 const S = {
   ricette: [], alimenti: [], ricettePerId: new Map(), alimentiPerId: new Map(),
   ricetteBase: [], alimentiBase: [], tutteRicette: [], ricetteUtente: {}, alimentiUtente: {},
   bozza: null, trascina: null, daRidisegnare: false,
-  pasti: {}, spunte: {}, extra: {}, giorniCasa: {}, impostazioni: {},
+  pasti: {}, spunte: {}, extra: {}, giorniCasa: {}, impostazioni: {}, prezzi: {}, prezzoAperto: null,
   utente: null, pronto: false, inAttesa: false, errore: null,
   scheda: "menu", settimana: inizioSettimana(oggiISO()), scambio: null,
   mostraDispensa: true, cercaRicetta: "", filtroPasto: "tutti",
@@ -126,9 +129,9 @@ async function avvia() {
     S.utente = utente;
     S.errore = null;
     if (utente) {
-      for (const coll of ["pasti", "spunte", "extra", "giorniCasa", "impostazioni", "ricetteUtente", "alimentiUtente"]) {
+      for (const coll of ["pasti", "spunte", "extra", "giorniCasa", "impostazioni", "ricetteUtente", "alimentiUtente", "prezzi"]) {
         stacca.push(archivio.ascolta(coll, (dati, meta) => {
-          S[coll] = dati;
+          S[coll] = coll === "prezzi" ? pulisciTuttiPrezzi(dati) : dati;
           if (coll === "ricetteUtente" || coll === "alimentiUtente") ricalcolaDati();
           S.inAttesa = meta.inAttesa;
           S.pronto = true;
@@ -695,16 +698,117 @@ function vociSpesa() {
   const voci = calcolaSpesa({
     piano: piano(), sabato: S.settimana, ricettePerId: S.ricettePerId,
     alimentiPerId: S.alimentiPerId, giorniCasa: S.giorniCasa, imp: imp(), porzioni: porzioniForzate(),
-  }).map((v) => ({ ...v, chiave: `${S.settimana}_${v.id}`, fatto: !!S.spunte[`${S.settimana}_${v.id}`]?.fatto }));
+  }).map((v) => ({
+    ...v, chiave: `${S.settimana}_${v.id}`, prodotto: chiaveProdotto({ alimento: v.id }),
+    fatto: !!S.spunte[`${S.settimana}_${v.id}`]?.fatto,
+  }));
   const extra = Object.entries(S.extra)
     .filter(([, e]) => e.settimana === S.settimana)
     .map(([id, e]) => ({
       id, chiave: id, extra: true, nome: e.testo, reparto: e.reparto || "altro", tipo: "fresco",
+      prodotto: chiaveProdotto({ nome: e.testo }), unita: "pz", quantita: 1,
       testoQuantita: "", testoConfezioni: "", testoGiorni: "", fatto: !!e.fatto,
     }));
   const pos = new Map(REPARTI.map((r, i) => [r.id, i]));
   return [...voci, ...extra].sort((a, b) =>
     (pos.get(a.reparto) ?? 99) - (pos.get(b.reparto) ?? 99) || a.nome.localeCompare(b.nome, "it"));
+}
+
+// ---------------------------------------------------------------- prezzi
+function pulisciTuttiPrezzi(dati) {
+  const out = {};
+  for (const [id, p] of Object.entries(dati || {})) {
+    const ok = pulisciPrezzo(p);
+    if (ok) out[id] = ok;
+  }
+  return out;
+}
+
+const FRECCE = { su: ["↑", "più caro"], giu: ["↓", "più economico"], uguale: ["=", "stabile"] };
+
+// Riga sotto la voce della spesa: prezzo pagato questa settimana, oppure ultimo
+// prezzo e media; toccandola si apre il prezzo con lo storico.
+function rigaPrezzo(v) {
+  const pagato = S.prezzi[v.chiave];
+  const st = statistiche(storico(S.prezzi, v.prodotto));
+  if (!pagato && !st) return "";
+  const parti = [];
+  if (pagato) parti.push(`pagato ${formattaEuro(pagato.prezzo)}`);
+  if (st) {
+    parti.push(`${pagato ? "" : "ultimo "}${formattaUnitario(st.ultimo)}`);
+    if (st.n > 1) parti.push(`media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })}`);
+  }
+  const fr = st?.tendenza ? FRECCE[st.tendenza] : null;
+  return `<button type="button" class="voce-prezzo${fr ? ` tend-${st.tendenza}` : ""}" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">💶 ${esc(parti.join(" · "))}${fr ? ` <b title="${fr[1]}">${fr[0]}</b>` : ""}</button>`;
+}
+
+function apriPrezzo(chiave) {
+  const v = vociSpesa().find((x) => x.chiave === chiave);
+  if (!v) return;
+  const esistente = S.prezzi[chiave];
+  const unitaFissa = !v.extra;
+  const unita = esistente?.unita || v.unita || "pz";
+  let quantita = esistente?.quantita;
+  if (!quantita) {
+    const a = S.alimentiPerId.get(v.id);
+    quantita = !v.extra && a?.conf && v.confezioni ? v.confezioni * a.conf : v.quantita || 1;
+  }
+  S.prezzoAperto = { chiave, prodotto: v.prodotto, nome: v.nome, unitaFissa, data: esistente?.data };
+  const lista = storico(S.prezzi, v.prodotto);
+  const st = statistiche(lista);
+  const valore = esistente ? String(esistente.prezzo).replace(".", ",") : "";
+  apriModale(`<h2>💶 ${esc(v.nome)}</h2>
+  <form class="editor" data-azione="salva-prezzo">
+    <div class="griglia-2">
+      <label>Prezzo pagato (€) <input id="prezzo-valore" name="prezzo" inputmode="decimal" autocomplete="off" placeholder="es. 2,49" value="${esc(valore)}"></label>
+      <label>Quantità comprata
+        <span class="ingr-riga"><input id="prezzo-q" name="quantita" type="number" min="0" step="any" inputmode="decimal" value="${esc(+quantita.toFixed(3))}">
+        ${unitaFissa
+          ? `<span class="unita">${NOMI_UNITA[unita] || unita}</span><input type="hidden" name="unita" value="${unita}">`
+          : `<select name="unita" id="prezzo-unita">${["pz", "g", "ml"].map((u) => `<option value="${u}" ${u === unita ? "selected" : ""}>${u}</option>`).join("")}</select>`}
+        </span></label>
+    </div>
+    <p class="anteprima-prezzo" id="anteprima-prezzo"></p>
+    ${st ? `<p class="nota">Ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})${st.n > 1 ? ` · media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })} su ${st.n} acquisti` : ""}</p>` : `<p class="nota">Primo prezzo per questo prodotto.</p>`}
+    <div class="azioni-modale">
+      ${esistente ? `<button type="button" class="btn pericolo" data-azione="togli-prezzo" data-chiave="${esc(chiave)}">Togli</button>` : ""}
+      <button type="button" class="btn" data-azione="chiudi">${esistente ? "Chiudi" : "Salta"}</button>
+      <button class="btn primario">Salva</button>
+    </div>
+  </form>
+  ${lista.length ? `<h3>Storico</h3><table class="storico-prezzi"><tbody>${lista.slice(0, 12).map((p) => `<tr>
+      <td>${esc(formattaBreve(p.data))}</td><td>${formattaEuro(p.prezzo)}</td>
+      <td>${esc(formattaQuantita(p.quantita, p.unita))}</td><td><b>${formattaUnitario(p.unitario)}</b></td></tr>`).join("")}</tbody></table>` : ""}`);
+  aggiornaAnteprimaPrezzo();
+  const inp = document.getElementById("prezzo-valore");
+  setTimeout(() => inp?.focus(), 50);
+}
+
+function aggiornaAnteprimaPrezzo() {
+  const el = document.getElementById("anteprima-prezzo");
+  if (!el) return;
+  const f = el.closest("form");
+  const prezzo = leggiNumero(f.prezzo.value);
+  const u = prezzoUnitario(prezzo, Number(f.quantita.value), f.unita.value);
+  el.textContent = u ? `= ${formattaUnitario(u)}` : "";
+}
+
+function salvaPrezzo(dati) {
+  const a = S.prezzoAperto;
+  if (!a) return;
+  const prezzo = leggiNumero(dati.prezzo);
+  const quantita = Number(dati.quantita);
+  if (!prezzo) return avviso("Scrivi il prezzo, es. 2,49 (oppure Salta)");
+  if (!(quantita > 0)) return avviso("Scrivi la quantità comprata");
+  const p = pulisciPrezzo({
+    prodotto: a.prodotto, nome: a.nome, prezzo, quantita, unita: dati.unita,
+    data: a.data || oggiISO(), quando: Date.now(),
+  });
+  if (!p) return avviso("Prezzo non valido");
+  archivio.scrivi("prezzi", a.chiave, p);
+  S.prezzoAperto = null;
+  chiudiModale();
+  avviso(`Salvato: ${formattaUnitario(prezzoUnitario(p.prezzo, p.quantita, p.unita))}`);
 }
 
 function vistaSpesa() {
@@ -733,6 +837,7 @@ function vistaSpesa() {
         <span class="voce">
           <span class="voce-nome">${esc(v.nome)}${v.tipo === "dispensa" && !v.extra ? ' <small class="etichetta">dispensa</small>' : ""}</span>
           <span class="voce-dett">${[v.testoQuantita, v.testoConfezioni && `${v.testoConfezioni}`, v.testoGiorni].filter(Boolean).map(esc).join(" · ")}</span>
+          ${rigaPrezzo(v)}
         </span>
       </label>
       ${v.extra ? `<button class="btn-ico piccolo" data-azione="togli-extra" data-id="${esc(v.id)}" aria-label="Togli">✕</button>` : ""}
@@ -915,6 +1020,8 @@ document.addEventListener("click", async (e) => {
     case "togli-casa":
       archivio.scriviMolti(el.dataset.giorni.split(",").map((d) => ({ coll: "giorniCasa", id: d, dati: null })));
       break;
+    case "apri-prezzo": e.preventDefault(); apriPrezzo(chiave); break;
+    case "togli-prezzo": archivio.elimina("prezzi", chiave); S.prezzoAperto = null; chiudiModale(); avviso("Prezzo tolto"); break;
     case "copia-spesa": {
       const voci = vociSpesa().filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra);
       const testo = spesaComeTesto(`Spesa ${intervalloSettimana(S.settimana)}`, voci);
@@ -939,10 +1046,14 @@ document.addEventListener("change", (e) => {
     if (el.dataset.extra) archivio.scrivi("extra", el.dataset.chiave, { fatto: el.checked });
     else if (el.checked) archivio.scrivi("spunte", el.dataset.chiave, { fatto: true, quando: Date.now() });
     else archivio.elimina("spunte", el.dataset.chiave);
+    // spuntando si può scrivere subito il prezzo (facoltativo: "Salta")
+    if (el.checked && !S.prezzi[el.dataset.chiave]) apriPrezzo(el.dataset.chiave);
   } else if (el.name === "ingr-id") {
     const a = S.alimentiPerId.get(el.value);
     const u = el.parentElement.querySelector(".unita");
     if (u) u.textContent = a ? NOMI_UNITA[a.unita] || a.unita : "";
+  } else if (el.id === "prezzo-unita") {
+    aggiornaAnteprimaPrezzo();
   } else if (el.dataset.azione === "dispensa") {
     S.mostraDispensa = el.checked;
     disegna();
@@ -950,6 +1061,7 @@ document.addEventListener("change", (e) => {
 });
 
 document.addEventListener("input", (e) => {
+  if (e.target.id === "prezzo-valore" || e.target.id === "prezzo-q") aggiornaAnteprimaPrezzo();
   if (e.target.id === "cerca-ricette") {
     S.cercaRicetta = e.target.value;
     disegnaListaRicette();
@@ -960,7 +1072,9 @@ document.addEventListener("submit", (e) => {
   const f = e.target;
   e.preventDefault();
   const dati = Object.fromEntries(new FormData(f));
-  if (f.dataset.azione === "aggiungi-extra") {
+  if (f.dataset.azione === "salva-prezzo") {
+    salvaPrezzo(dati);
+  } else if (f.dataset.azione === "aggiungi-extra") {
     if (!dati.testo.trim()) return;
     archivio.scrivi("extra", idCasuale(), { settimana: S.settimana, testo: dati.testo.trim(), reparto: dati.reparto, fatto: false });
   } else if (f.dataset.azione === "aggiungi-casa") {

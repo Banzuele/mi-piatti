@@ -289,3 +289,18 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
 .intro-nome { margin: 14px 0 0; font-size: 22px; font-weight: 700; color: var(--primario); }
 .intro-stato { margin: 0; font-size: 14px; color: var(--tenue); min-height: 1.4em; }
 .intro-versione { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); font-size: 12px; color: var(--tenue); }
+
+/* prezzi nella spesa */
+.voce-prezzo {
+  align-self: flex-start; margin-top: 3px; padding: 2px 8px; border: 0; border-radius: 999px;
+  background: var(--accento); color: var(--testo); font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+}
+.voce-prezzo b { margin-left: 2px; }
+.voce-prezzo.tend-su b { color: var(--alta); }
+.voce-prezzo.tend-giu b { color: var(--bassa); }
+.voce-prezzo.tend-uguale b { color: var(--tenue); }
+.anteprima-prezzo { margin: 0 0 6px; font-weight: 600; color: var(--primario); min-height: 1.4em; }
+.foglio label .ingr-riga { color: var(--testo); }
+.storico-prezzi { width: 100%; border-collapse: collapse; font-size: 14px; }
+.storico-prezzi td { padding: 6px 4px; border-top: 1px solid var(--bordo); }
+.storico-prezzi td:last-child { text-align: right; }
