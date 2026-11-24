@@ -4,7 +4,7 @@ App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena
 
 ## Cosa fa
 
-- **Menù**: genera da 1 a 4 settimane rispettando stagione, deperibilità (Alta sab-lun, Media mar-mer, Bassa gio-ven), massimo 2 ripetizioni per ricetta, proteine diverse tra pranzo e cena e le regole settimanali (pesce e legumi almeno 2 volte, carne rossa al massimo 2). Ogni pasto si può cambiare, scegliere dall'elenco o scambiare con un altro giorno.
+- **Menù**: genera da 1 a 4 settimane rispettando stagione, deperibilità (Alta sab-lun, Media mar-mer, Bassa gio-ven), massimo 2 ripetizioni per ricetta, proteine diverse tra pranzo e cena e le regole settimanali (pesce e legumi almeno 2 volte, carne rossa al massimo 2). Ogni pasto si può cambiare, scegliere dall'elenco o scambiare con un altro giorno. Toccando il moltiplicatore (×1 / ×2,5) a destra di un pasto si cambiano le porzioni solo di quel pasto, e la spesa si aggiorna.
 - **Porzioni**: pranzo feriale ×1 (solo la compagna), cene, weekend, festività nazionali, ferie e mensa chiusa ×2,5. Le festività (Pasqua compresa) sono calcolate in automatico; ferie e chiusure della mensa si inseriscono in *Altro*.
 - **Spesa**: somma gli ingredienti della settimana, con quantità, confezioni e giorni in cui servono. Ordine reparti: verdure, frutta, banco frigo, pasta, conserve, salumi e formaggi, congelati, bevande, pane. Il pesce dei pasti da martedì a venerdì diventa la versione surgelata. Spunte condivise, voci libere, pulsante "Copia come testo" con caselle `[ ]`.
 - **Ricette**: 150 ricette (73 pranzi, 77 cene), dosi per una porzione, con tempi di preparazione attiva e totale e il procedimento passo per passo. Quelle oltre 30 min attivi o 60 totali restano visibili ma non vengono proposte.

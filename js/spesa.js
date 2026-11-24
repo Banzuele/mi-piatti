@@ -32,6 +32,7 @@ export function formattaQuantita(q, unita) {
 
 export function calcolaSpesa({
   piano, sabato, ricettePerId, alimentiPerId, giorniCasa = {}, imp = IMPOSTAZIONI_PREDEFINITE,
+  porzioni = {}, // porzioni scelte a mano per singolo pasto: { "AAAA-MM-GG_cena": 1 }
 }) {
   const voci = new Map();
   for (const data of giorniSettimana(sabato)) {
@@ -39,7 +40,7 @@ export function calcolaSpesa({
     for (const pasto of PASTI) {
       const r = ricettePerId.get(piano[chiavePasto(data, pasto)]);
       if (!r) continue;
-      const molt = info.moltiplicatori[pasto];
+      const molt = porzioni[chiavePasto(data, pasto)] ?? info.moltiplicatori[pasto];
       for (const ing of r.ingredienti) {
         let a = alimentiPerId.get(ing.id);
         if (!a) continue;
