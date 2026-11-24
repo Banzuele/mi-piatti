@@ -206,3 +206,12 @@ details summary { cursor: pointer; color: var(--primario); padding: 6px 0; }
   box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
 }
 .avviso[hidden] { display: none; }
+
+.aggiorna {
+  position: fixed; left: 16px; right: 16px; z-index: 40;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  max-width: 608px; margin: 0 auto;
+  background: #23302a; color: #fff; padding: 10px 12px 10px 16px; border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .25); font-size: 15px;
+}

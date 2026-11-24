@@ -48,8 +48,8 @@ function avviso(testo, ms = 2500) {
 async function avvia() {
   try {
     const [ricette, alimenti] = await Promise.all([
-      fetch("data/ricette.json").then((r) => r.json()),
-      fetch("data/alimenti.json").then((r) => r.json()),
+      fetch("data/ricette.json", { cache: "no-cache" }).then((r) => r.json()),
+      fetch("data/alimenti.json", { cache: "no-cache" }).then((r) => r.json()),
     ]);
     S.ricette = ricette;
     S.alimenti = alimenti;
@@ -485,7 +485,7 @@ function vistaAltro() {
       <button class="btn primario">Salva</button>
     </form>
   </section>
-  <p class="nota centro">Mi-Piatti · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+  <p class="nota centro">Mi-Piatti v3 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
 }
 
 // ---------------------------------------------------------------- modale
@@ -607,8 +607,31 @@ window.addEventListener("online", disegnaStato);
 window.addEventListener("offline", disegnaStato);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$modale.hidden) chiudiModale(); });
 
+// Aggiornamenti: il telefono controlla se c'è una nuova versione a ogni apertura
+// e quando l'app torna in primo piano; se c'è, mostra un avviso per ricaricare.
+function avvisoAggiornamento() {
+  if (document.getElementById("aggiorna")) return;
+  const el = document.createElement("div");
+  el.id = "aggiorna";
+  el.className = "aggiorna";
+  el.innerHTML = `<span>Nuova versione disponibile</span><button class="btn piccolo primario">Aggiorna</button>`;
+  el.querySelector("button").addEventListener("click", () => location.reload());
+  document.body.appendChild(el);
+}
+
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
-  navigator.serviceWorker.register("sw.js").catch((e) => console.warn("Service worker non registrato", e));
+  const giaControllata = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") reg.update().catch(() => {});
+    });
+  }).catch((e) => console.warn("Service worker non registrato", e));
+  // un nuovo service worker ha preso il controllo mentre l'app era aperta
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (giaControllata) avvisoAggiornamento(); });
+  // il service worker ha servito una copia vecchia e poi ha scaricato quella nuova
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data?.tipo === "aggiornamento") avvisoAggiornamento();
+  });
 }
 
 // per i test

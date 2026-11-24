@@ -1,6 +1,6 @@
 // Service worker: l'app funziona anche senza rete (es. al supermercato).
-// Cambiare VERSIONE quando cambia l'elenco dei file.
-const VERSIONE = "mi-piatti-v2";
+// Cambiare VERSIONE a ogni rilascio: i telefoni riscaricano tutti i file.
+const VERSIONE = "mi-piatti-v3";
 const FILE = [
   "./", "index.html", "manifest.webmanifest", "config.js",
   "css/stile.css",
@@ -10,7 +10,10 @@ const FILE = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSIONE).then((c) => c.addAll(FILE)).then(() => self.skipWaiting()));
+  // cache: "reload" scavalca la cache HTTP del telefono: si salvano i file appena pubblicati
+  e.waitUntil(caches.open(VERSIONE)
+    .then((c) => c.addAll(FILE.map((f) => new Request(f, { cache: "reload" }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
@@ -29,31 +32,49 @@ self.addEventListener("fetch", (e) => {
   const sdkFirebase = url.hostname === "www.gstatic.com" && url.pathname.startsWith("/firebasejs/");
   if (!stessoSito && !sdkFirebase) return; // Firestore e login passano direttamente
 
-  e.respondWith(stessoSito ? primaRete(req) : primaCache(req));
+  e.respondWith(stessoSito ? primaRete(req, url) : primaCache(req));
 });
 
-// File dell'app: prima la rete (così gli aggiornamenti arrivano subito),
-// ma se la rete non risponde entro 3 secondi si usa la copia salvata.
-async function primaRete(req) {
+// File dell'app: prima la rete, così gli aggiornamenti arrivano subito.
+// - cache "no-cache": chiede sempre al server se il file è cambiato, invece di
+//   riusare per 10 minuti la copia nella cache HTTP del telefono (GitHub Pages);
+// - se la rete non risponde entro 4 secondi si usa la copia salvata; se poi
+//   arriva un file diverso, l'app mostra "Nuova versione disponibile".
+async function primaRete(req, url) {
   const cache = await caches.open(VERSIONE);
-  const salvata = () => cache.match(req, { ignoreSearch: true })
-    .then((r) => r || (req.mode === "navigate" ? cache.match("index.html") : undefined));
-  const rete = fetch(req).then((risp) => {
-    if (risp.ok) cache.put(req, risp.clone());
-    return risp;
-  });
-  rete.catch(() => {});
-  const attesa = new Promise((ok) => setTimeout(ok, 3000)).then(salvata);
+  const chiave = req.mode === "navigate"
+    ? new URL("index.html", self.registration.scope).href
+    : url.origin + url.pathname;
+
+  const daRete = fetch(url.origin + url.pathname, { cache: "no-cache", credentials: "same-origin" })
+    .then(async (risp) => {
+      if (risp.ok) await cache.put(chiave, risp.clone());
+      return { risp, fonte: "rete" };
+    });
+  const daCache = new Promise((ok) => setTimeout(ok, 4000))
+    .then(async () => ({ risp: await cache.match(chiave), fonte: "cache" }));
+
   try {
-    const primo = await Promise.race([rete, attesa]);
-    if (primo) return primo;
-    return await rete;
+    const primo = await Promise.race([daRete, daCache]);
+    if (primo.fonte === "cache" && primo.risp) {
+      const vecchio = primo.risp.clone();
+      daRete.then(async ({ risp }) => {
+        if (risp.ok && (await risp.clone().text()) !== (await vecchio.text())) avvisaApp();
+      }).catch(() => {});
+      return primo.risp;
+    }
+    return (await daRete).risp;
   } catch {
-    return (await salvata()) || Response.error();
+    return (await cache.match(chiave)) || Response.error();
   }
 }
 
-// Librerie Firebase (versione fissa): prima la cache
+function avvisaApp() {
+  self.clients.matchAll({ type: "window" })
+    .then((cl) => cl.forEach((c) => c.postMessage({ tipo: "aggiornamento" })));
+}
+
+// Librerie Firebase (versione fissa nell'indirizzo): prima la cache
 async function primaCache(req) {
   const cache = await caches.open(VERSIONE);
   const salvata = await cache.match(req);
