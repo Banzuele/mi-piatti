@@ -27,6 +27,10 @@ const $modale = document.getElementById("modale");
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Solo indirizzi web veri: niente "javascript:" o simili nei link delle ricette
+const linkSicuro = (u) => {
+  try { const x = new URL(String(u)); return x.protocol === "https:" || x.protocol === "http:" ? x.href : ""; } catch { return ""; }
+};
 const num = (v) => String(Math.round(v * 100) / 100).replace(".", ",");
 const imp = () => ({ ...IMPOSTAZIONI_PREDEFINITE, ...(S.impostazioni.generali || {}) });
 // Porzioni di un pasto: quelle del calendario, oppure quelle scelte a mano nel menù
@@ -60,18 +64,44 @@ function avviso(testo, ms = 2500) {
 // (salvate in Firestore, condivise tra i telefoni).
 function ricalcolaDati() {
   const al = new Map(S.alimentiBase.map((a) => [a.id, a]));
-  for (const [id, a] of Object.entries(S.alimentiUtente)) if (a?.nome) al.set(id, { ...a, id });
+  for (const [id, a] of Object.entries(S.alimentiUtente)) {
+    if (typeof a?.nome === "string" && a.nome) al.set(id, { ...a, nome: a.nome.slice(0, LIMITI.nome), id });
+  }
   S.alimenti = [...al.values()];
   S.alimentiPerId = al;
   const base = new Map(S.ricetteBase.map((r) => [r.id, r]));
   const rs = new Map(base);
   for (const [id, d] of Object.entries(S.ricetteUtente)) {
-    if (d?.ricetta) rs.set(id, { ...d.ricetta, id, modificata: base.has(id), mia: !base.has(id) });
+    const r = d?.ricetta && pulisciRicetta(d.ricetta);
+    if (r) rs.set(id, { ...r, id, modificata: base.has(id), mia: !base.has(id) });
     if (d?.nascosta && rs.has(id)) rs.set(id, { ...rs.get(id), nascosta: true });
   }
   S.tutteRicette = [...rs.values()];
   S.ricette = S.tutteRicette.filter((r) => !r.nascosta);
   S.ricettePerId = rs;
+}
+
+// Ricette salvate dall'app (Firestore): si accetta solo ciò che ha la forma
+// giusta, così un dato rovinato non blocca l'app e non finisce nella pagina.
+const LIMITI = { nome: 120, riga: 1000, righe: 40, link: 500, ingredienti: 40 };
+function pulisciRicetta(r) {
+  const testo = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
+  const numero = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const nome = testo(r.nome, LIMITI.nome);
+  if (!nome || !["pranzo", "cena"].includes(r.pasto)) return null;
+  return {
+    nome, pasto: r.pasto,
+    proteina: PROTEINE.includes(r.proteina) ? r.proteina : "Nessuna",
+    deperibilita: ["Alta", "Media", "Bassa"].includes(r.deperibilita) ? r.deperibilita : "Bassa",
+    stagioni: STAGIONI.filter((x) => Array.isArray(r.stagioni) && r.stagioni.includes(x)),
+    tempoPrep: numero(r.tempoPrep), tempoTotale: numero(r.tempoTotale),
+    ingredienti: (Array.isArray(r.ingredienti) ? r.ingredienti : []).slice(0, LIMITI.ingredienti)
+      .filter((i) => typeof i?.id === "string" && numero(i.q) > 0).map((i) => ({ id: i.id, q: numero(i.q) })),
+    procedimento: (Array.isArray(r.procedimento) ? r.procedimento : []).slice(0, LIMITI.righe)
+      .map((x) => testo(x, LIMITI.riga)).filter(Boolean),
+    ...(r.contorno ? { contorno: testo(r.contorno, LIMITI.riga) } : {}),
+    ...(linkSicuro(r.link) ? { link: linkSicuro(r.link) } : {}),
+  };
 }
 
 // ---------------------------------------------------------------- avvio
@@ -287,7 +317,7 @@ function apriPasto(k) {
   apriModale(`<h2>${PASTO[p].ico} ${PASTO[p].nome} · ${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</h2>
     ${r ? `<p class="sottotitolo">${esc(r.nome)}</p>` : ""}
     <div class="lista-azioni">
-      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${r.id}" data-chiave="${k}">📖 Vedi ricetta e dosi</button>` : ""}
+      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${k}">📖 Vedi ricetta e dosi</button>` : ""}
       <button class="btn largo" data-azione="cambia" data-chiave="${k}">🎲 Cambia (proposta automatica)</button>
       <button class="btn largo" data-azione="scegli" data-chiave="${k}">📋 Scegli dall'elenco</button>
       ${r ? `<button class="btn largo" data-azione="scambia" data-chiave="${k}">🔁 Scambia con un altro giorno</button>` : ""}
@@ -454,7 +484,7 @@ function disegnaEditor() {
   const opz = (lista, val) => lista.map(([v, t]) => `<option value="${esc(v)}" ${v === val ? "selected" : ""}>${esc(t)}</option>`).join("");
   apriModale(`<h2>${b.id ? "Modifica ricetta" : "Nuova ricetta"}</h2>
   <form id="editor" class="editor" onsubmit="return false">
-    <label>Nome <input name="nome" value="${esc(b.nome)}" required placeholder="es. Pasta zucchine e ricotta"></label>
+    <label>Nome <input name="nome" value="${esc(b.nome)}" required maxlength="120" placeholder="es. Pasta zucchine e ricotta"></label>
     <div class="griglia-2">
       <label>Pasto <select name="pasto" ${b.id ? "disabled" : ""}>${opz([["pranzo", "Pranzo"], ["cena", "Cena"]], b.pasto)}</select></label>
       <label>Proteina <select name="proteina">${opz(PROTEINE.map((p) => [p, p]), b.proteina)}</select></label>
@@ -471,9 +501,9 @@ function disegnaEditor() {
       const a = S.alimentiPerId.get(i.id);
       return `<div class="ingr-riga">
         <select name="ingr-id" data-i="${n}"><option value="">— scegli —</option>${alimenti.map((x) =>
-          `<option value="${x.id}" ${x.id === i.id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
+          `<option value="${esc(x.id)}" ${x.id === i.id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
         <input name="ingr-q" data-i="${n}" type="number" min="0" step="any" inputmode="decimal" value="${esc(i.q)}" placeholder="qtà">
-        <span class="unita">${a ? NOMI_UNITA[a.unita] || a.unita : ""}</span>
+        <span class="unita">${a ? esc(NOMI_UNITA[a.unita] || a.unita) : ""}</span>
         <button type="button" class="btn-ico piccolo" data-azione="ed-togli-ingr" data-i="${n}" aria-label="Togli">✕</button>
       </div>`;
     }).join("")}</div>
@@ -482,7 +512,7 @@ function disegnaEditor() {
       <button type="button" class="btn piccolo" data-azione="ed-nuovo-alimento">+ Alimento che non c'è</button>
     </div>
     ${b.nuovoAlimento ? `<div class="nuovo-alimento">
-      <label>Nome alimento <input name="na-nome" placeholder="es. Ceci neri"></label>
+      <label>Nome alimento <input name="na-nome" maxlength="120" placeholder="es. Ceci neri"></label>
       <div class="griglia-2">
         <label>Reparto <select name="na-reparto">${REPARTI.map((r) => `<option value="${r.id}">${r.nome}</option>`).join("")}</select></label>
         <label>Unità <select name="na-unita"><option value="g">grammi</option><option value="ml">millilitri</option><option value="pz">pezzi</option></select></label>
@@ -492,15 +522,15 @@ function disegnaEditor() {
     </div>` : ""}
     <label>Procedimento (un passo per riga)
       <textarea name="procedimento" rows="6" placeholder="Lessa la pasta.&#10;Intanto...">${esc(b.procedimento.join("\n"))}</textarea></label>
-    <label>Contorno o note (facoltativo) <input name="contorno" value="${esc(b.contorno)}"></label>
-    <label>Link (facoltativo) <input name="link" type="url" value="${esc(b.link)}" placeholder="https://…"></label>
+    <label>Contorno o note (facoltativo) <input name="contorno" maxlength="1000" value="${esc(b.contorno)}"></label>
+    <label>Link (facoltativo) <input name="link" type="url" maxlength="500" value="${esc(b.link)}" placeholder="https://…"></label>
   </form>
   ${orig ? `<div class="lista-azioni">
     ${orig.nascosta
-      ? `<button class="btn largo" data-azione="ed-mostra" data-id="${orig.id}">👁️ Torna a proporla nel menù</button>`
-      : `<button class="btn largo" data-azione="ed-nascondi" data-id="${orig.id}">🙈 Non proporla più nel menù</button>`}
-    ${orig.modificata ? `<button class="btn largo" data-azione="ed-ripristina" data-id="${orig.id}">↺ Torna alla versione originale</button>` : ""}
-    ${orig.mia ? `<button class="btn largo pericolo" data-azione="ed-elimina" data-id="${orig.id}">🗑️ Elimina la ricetta</button>` : ""}
+      ? `<button class="btn largo" data-azione="ed-mostra" data-id="${esc(orig.id)}">👁️ Torna a proporla nel menù</button>`
+      : `<button class="btn largo" data-azione="ed-nascondi" data-id="${esc(orig.id)}">🙈 Non proporla più nel menù</button>`}
+    ${orig.modificata ? `<button class="btn largo" data-azione="ed-ripristina" data-id="${esc(orig.id)}">↺ Torna alla versione originale</button>` : ""}
+    ${orig.mia ? `<button class="btn largo pericolo" data-azione="ed-elimina" data-id="${esc(orig.id)}">🗑️ Elimina la ricetta</button>` : ""}
   </div>` : ""}
   <div class="azioni-modale">
     <button class="btn" data-azione="chiudi">Annulla</button>
@@ -535,6 +565,10 @@ function salvaEditor() {
   const ingr = b.ingredienti.filter((i) => i.id && Number(i.q) > 0).map((i) => ({ id: i.id, q: Number(i.q) }));
   const prep = Number(b.tempoPrep), tot = Number(b.tempoTotale);
   if (!b.nome) return avviso("Scrivi il nome della ricetta");
+  if (b.nome.length > LIMITI.nome) return avviso(`Il nome è troppo lungo (massimo ${LIMITI.nome} caratteri)`);
+  if (b.link && !linkSicuro(b.link)) return avviso("Il link deve iniziare con https:// (o http://)");
+  if (b.link.length > LIMITI.link || b.procedimento.length > LIMITI.righe || b.procedimento.some((x) => x.length > LIMITI.riga)
+    || b.contorno.length > LIMITI.riga) return avviso("Testo troppo lungo: accorcia procedimento, contorno o link");
   if (!ingr.length) return avviso("Aggiungi almeno un ingrediente con la quantità");
   if (!b.stagioni.length) return avviso("Scegli almeno una stagione");
   if (!(prep > 0) || !(tot >= prep)) return avviso("Controlla i tempi: il totale non può essere minore dei minuti attivi");
@@ -545,7 +579,7 @@ function salvaEditor() {
     ingredienti: ingr, procedimento: b.procedimento,
   };
   if (b.contorno) ricetta.contorno = b.contorno;
-  if (b.link) ricetta.link = b.link;
+  if (b.link) ricetta.link = linkSicuro(b.link);
   archivio.scrivi("ricetteUtente", id, { ricetta, quando: Date.now() });
   S.bozza = null;
   chiudiModale();
@@ -557,6 +591,7 @@ function salvaNuovoAlimento() {
   leggiEditor();
   const na = S.bozza.na;
   if (!na?.nome) return avviso("Scrivi il nome dell'alimento");
+  if (na.nome.length > LIMITI.nome) return avviso(`Il nome è troppo lungo (massimo ${LIMITI.nome} caratteri)`);
   if (S.alimenti.some((a) => a.nome.toLowerCase() === na.nome.toLowerCase())) return avviso("Questo alimento c'è già nell'elenco");
   const id = nuovoIdAlimento();
   const a = { nome: na.nome, reparto: na.reparto, tipo: na.tipo, unita: na.unita };
@@ -600,7 +635,7 @@ function scegli(k, filtro = "") {
   apriModale(`<h2>Scegli ${PASTO[pasto].nome.toLowerCase()} · ${formattaGiornoMese(data)}</h2>
     <input type="search" id="cerca-scelta" placeholder="Cerca…" value="${esc(filtro)}" data-chiave="${k}">
     <div class="elenco-scelta">${elenco.map(({ r, adatta }) => `
-      <button class="riga-ricetta ${adatta ? "" : "sconsigliata"}" data-azione="scelto" data-chiave="${k}" data-id="${r.id}">
+      <button class="riga-ricetta ${adatta ? "" : "sconsigliata"}" data-azione="scelto" data-chiave="${k}" data-id="${esc(r.id)}">
         <span>${esc(r.nome)}</span>
         <small>${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min${adatta ? "" : " · fuori stagione o deperibilità"}</small>
       </button>`).join("")}
@@ -630,7 +665,7 @@ function vediRicetta(id, k) {
     if (!a) return "";
     const surg = a.surgelato && data && usaSurgelato(data) ? S.alimentiPerId.get(a.surgelato) : null;
     const q = formattaQuantita(Math.round(i.q * molt * 10) / 10, a.unita);
-    return `<li><span>${esc(surg ? surg.nome : a.nome)}${a.tipo === "dispensa" ? ' <small class="etichetta">dispensa</small>' : ""}</span><strong>${q}</strong></li>`;
+    return `<li><span>${esc(surg ? surg.nome : a.nome)}${a.tipo === "dispensa" ? ' <small class="etichetta">dispensa</small>' : ""}</span><strong>${esc(q)}</strong></li>`;
   }).join("");
   const fuori = !entroTempi(r, imp());
   apriModale(`<h2>${esc(r.nome)}</h2>
@@ -640,7 +675,7 @@ function vediRicetta(id, k) {
       <span class="chip">${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)}</span>
       <span class="chip">⏱️ ${r.tempoPrep} min attivi · ${r.tempoTotale} min totali</span>
       <span class="chip">Deperibilità ${esc(r.deperibilita)}</span>
-      <span class="chip">${r.stagioni.length === 4 ? "Tutto l'anno" : r.stagioni.join(", ")}</span>
+      <span class="chip">${r.stagioni.length === 4 ? "Tutto l'anno" : esc(r.stagioni.join(", "))}</span>
     </div>
     ${fuori ? `<p class="nota avvertenza">Supera i limiti di tempo (${imp().maxPrep} min attivi, ${imp().maxTotale} totali): non viene proposta nel menù.</p>` : ""}
     <h3>Ingredienti ${molt === 1 ? "(1 porzione)" : `(×${num(molt)} porzioni)`}</h3>
@@ -648,9 +683,9 @@ function vediRicetta(id, k) {
     ${r.contorno ? `<p class="nota">Contorno e frutta: ${esc(r.contorno)}</p>` : ""}
     ${r.procedimento?.length ? `<h3>Procedimento</h3>
     <ol class="procedimento">${r.procedimento.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>` : ""}
-    ${r.link ? `<p><a href="${esc(r.link)}" target="_blank" rel="noopener">Apri la ricetta online ↗</a></p>` : ""}
+    ${r.link ? `<p><a href="${esc(linkSicuro(r.link))}" target="_blank" rel="noopener noreferrer">Apri la ricetta online ↗</a></p>` : ""}
     <div class="azioni-modale">
-      <button class="btn" data-azione="modifica-ricetta" data-id="${r.id}">✏️ Modifica</button>
+      <button class="btn" data-azione="modifica-ricetta" data-id="${esc(r.id)}">✏️ Modifica</button>
       <button class="btn" data-azione="chiudi">Chiudi</button>
     </div>`);
 }
@@ -736,9 +771,9 @@ function disegnaListaRicette() {
       || r.ingredienti.some((i) => S.alimentiPerId.get(i.id)?.nome.toLowerCase().includes(f))));
   elenco.sort((a, b) => (a.nascosta ? 1 : 0) - (b.nascosta ? 1 : 0));
   el.innerHTML = `<p class="nota">${elenco.length} ricette</p>` + elenco.map((r) => `
-    <button class="riga-ricetta ${entroTempi(r, imp()) && !r.nascosta ? "" : "sconsigliata"}" data-azione="vedi-ricetta" data-id="${r.id}">
+    <button class="riga-ricetta ${entroTempi(r, imp()) && !r.nascosta ? "" : "sconsigliata"}" data-azione="vedi-ricetta" data-id="${esc(r.id)}">
       <span>${PASTO[r.pasto].ico} ${esc(r.nome)}${r.nascosta ? ' <small class="etichetta">non proposta</small>' : r.mia ? ' <small class="etichetta">vostra</small>' : r.modificata ? ' <small class="etichetta">modificata</small>' : ""}</span>
-      <small>${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoPrep}/${r.tempoTotale} min · ${r.stagioni.length === 4 ? "tutto l'anno" : r.stagioni.join(", ")}</small>
+      <small>${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoPrep}/${r.tempoTotale} min · ${r.stagioni.length === 4 ? "tutto l'anno" : esc(r.stagioni.join(", "))}</small>
     </button>`).join("");
 }
 
@@ -780,7 +815,7 @@ function vistaAltro() {
     <ul class="elenco-casa">${gruppi.filter((g) => g.al >= aggiungiGiorni(oggi, -30)).map((g) => `
       <li><span><strong>${g.dal === g.al ? formattaGiornoMese(g.dal) : `${formattaGiornoMese(g.dal)} – ${formattaGiornoMese(g.al)}`}</strong>
         ${esc(nomeTipo[g.tipo] || g.tipo)}${g.nota ? ` · ${esc(g.nota)}` : ""}</span>
-        <button class="btn-ico piccolo" data-azione="togli-casa" data-giorni="${g.giorni.join(",")}" aria-label="Togli">✕</button></li>`).join("")
+        <button class="btn-ico piccolo" data-azione="togli-casa" data-giorni="${esc(g.giorni.join(","))}" aria-label="Togli">✕</button></li>`).join("")
       || "<li class='nota'>Nessun giorno inserito.</li>"}</ul>
     <details><summary>Prossime festività</summary>
       <ul class="elenco-casa">${feste.map((f) => `<li><span><strong>${formattaGiornoMese(f.data)} ${f.data.slice(0, 4)}</strong> ${esc(f.nome)}</span></li>`).join("")}</ul>
@@ -790,15 +825,15 @@ function vistaAltro() {
   <section class="pannello">
     <h2>Impostazioni</h2>
     <form class="form-imp" data-azione="salva-imp">
-      <label>Porzioni pranzo feriale <input type="number" step="0.5" min="0.5" name="moltPranzoFeriale" value="${I.moltPranzoFeriale}"></label>
-      <label>Porzioni famiglia (cene, weekend, feste) <input type="number" step="0.5" min="0.5" name="moltFamiglia" value="${I.moltFamiglia}"></label>
-      <label>Preparazione attiva massima (min) <input type="number" min="5" name="maxPrep" value="${I.maxPrep}"></label>
-      <label>Tempo totale massimo (min) <input type="number" min="5" name="maxTotale" value="${I.maxTotale}"></label>
-      <label>Ripetizioni massime di una ricetta in 4 settimane <input type="number" min="1" name="maxRipetizioni" value="${I.maxRipetizioni}"></label>
+      <label>Porzioni pranzo feriale <input type="number" step="0.5" min="0.5" name="moltPranzoFeriale" value="${esc(I.moltPranzoFeriale)}"></label>
+      <label>Porzioni famiglia (cene, weekend, feste) <input type="number" step="0.5" min="0.5" name="moltFamiglia" value="${esc(I.moltFamiglia)}"></label>
+      <label>Preparazione attiva massima (min) <input type="number" min="5" name="maxPrep" value="${esc(I.maxPrep)}"></label>
+      <label>Tempo totale massimo (min) <input type="number" min="5" name="maxTotale" value="${esc(I.maxTotale)}"></label>
+      <label>Ripetizioni massime di una ricetta in 4 settimane <input type="number" min="1" name="maxRipetizioni" value="${esc(I.maxRipetizioni)}"></label>
       <button class="btn primario">Salva</button>
     </form>
   </section>
-  <p class="nota centro">Mi-Piatti v5 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+  <p class="nota centro">Mi-Piatti v6 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
 }
 
 // ---------------------------------------------------------------- modale
