@@ -23,6 +23,14 @@ test("dati: ingredienti esistenti, niente orzo né ricette escluse", () => {
   for (const r of ricette) assert.ok(prot.has(r.proteina), `${r.id} ${r.proteina}`);
 });
 
+test("ricette: procedimento presente e ingredienti con dosi a porzione", () => {
+  assert.ok(ricette.length >= 150);
+  for (const r of ricette) {
+    assert.ok(Array.isArray(r.procedimento) && r.procedimento.length >= 2, `${r.id} senza procedimento`);
+    for (const i of r.ingredienti) assert.ok(i.q > 0, `${r.id} ${i.id} quantità`);
+  }
+});
+
 test("cene 1-30 riportate a porzione singola", () => {
   const pollo = ricettePerId.get("CEN04").ingredienti.find((i) => i.id === "AL33");
   assert.equal(pollo.q, 200); // 500 g per famiglia / 2,5

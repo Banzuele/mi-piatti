@@ -1,6 +1,6 @@
 // Service worker: l'app funziona anche senza rete (es. al supermercato).
 // Cambiare VERSIONE quando cambia l'elenco dei file.
-const VERSIONE = "mi-piatti-v1";
+const VERSIONE = "mi-piatti-v2";
 const FILE = [
   "./", "index.html", "manifest.webmanifest", "config.js",
   "css/stile.css",

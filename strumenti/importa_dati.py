@@ -154,6 +154,11 @@ ALIMENTI = [
     A("AL125", "Polpo surgelato", "congelati", "fresco", "g"),
     A("AL126", "Cozze surgelate", "congelati", "fresco", "g"),
     A("AL127", "Vongole surgelate", "congelati", "fresco", "g"),
+    # --- aggiunti con le nuove ricette ---
+    A("AL128", "Cipolle", "verdure", "dispensa", "g"),
+    A("AL129", "Sedano", "verdure", "fresco", "g"),
+    A("AL130", "Cavolo nero", "verdure", "fresco", "g"),
+    A("AL131", "Piadine", "pane", "fresco", "pz", 3, "confezione"),
 ]
 
 # Duplicati di DB_Alimenti uniti (ID vecchio -> ID tenuto). AL68 (orzo) tolto.
@@ -296,6 +301,108 @@ AGGIUNTE = {
 TOGLI = {"PRA53": {"orzo perlato"}, "CEN49": {"sale grosso"}}
 
 
+# Nuove ricette (non presenti nell'Excel). Stessi vincoli: adatte a un bimbo di
+# 2 anni, max 30 min attivi e 60 totali, dosi per UNA porzione, ingredienti per ID.
+# (id, nome, proteina, deperibilita, stagioni, prep, totale, [(ID, quantità)])
+TUTTE = "tutte"
+AI = "autunno inverno"
+PE = "primavera estate"
+NUOVE = [
+    ("PRA61", "Pasta e lenticchie rosse", "Legumi", "Bassa", TUTTE, 10, 25,
+     [("AL01", 70), ("AL11", 50), ("AL128", 20), ("AL16", 50), ("AL90", 10)]),
+    ("PRA62", "Risotto ai piselli", "Legumi", "Bassa", TUTTE, 10, 25,
+     [("AL02", 80), ("AL12", 100), ("AL128", 20), ("AL27", 15), ("AL90", 5)]),
+    ("PRA63", "Pasta al tonno e pomodoro", "Pesce", "Bassa", TUTTE, 10, 20,
+     [("AL01", 80), ("AL40", 60), ("AL13", 100), ("AL90", 10)]),
+    ("PRA64", "Couscous con merluzzo e zucchine", "Pesce", "Alta", PE, 15, 25,
+     [("AL05", 70), ("AL37", 100), ("AL15", 120), ("AL90", 10)]),
+    ("PRA65", "Farro con ceci, zucca e rosmarino", "Legumi", "Media", AI, 15, 40,
+     [("AL04", 70), ("AL08", 100), ("AL14", 150), ("AL115", 2), ("AL90", 10)]),
+    ("PRA66", "Frittata di spaghetti", "Uova", "Bassa", TUTTE, 15, 35,
+     [("AL100", 70), ("AL30", 1), ("AL27", 15), ("AL25", 30), ("AL90", 5)]),
+    ("PRA67", "Riso basmati saltato con pollo e verdure", "Carne bianca", "Alta", TUTTE, 15, 25,
+     [("AL03", 70), ("AL33", 100), ("AL16", 60), ("AL15", 80), ("AL90", 10)]),
+    ("PRA68", "Insalata di quinoa, ceci e verdure", "Legumi", "Media", PE, 15, 25,
+     [("AL64", 60), ("AL08", 100), ("AL21", 80), ("AL105", 60), ("AL90", 10)]),
+    ("PRA69", "Minestra di ceci e pastina", "Legumi", "Bassa", AI, 10, 30,
+     [("AL07", 50), ("AL08", 120), ("AL16", 50), ("AL129", 30), ("AL90", 10)]),
+    ("PRA70", "Spaghetti al ragù di tacchino", "Carne bianca", "Alta", TUTTE, 15, 40,
+     [("AL100", 80), ("AL31", 80), ("AL13", 120), ("AL128", 20), ("AL16", 30), ("AL90", 10)]),
+    ("PRA71", "Pasta con zucchine e gamberetti", "Pesce", "Bassa", TUTTE, 15, 25,
+     [("AL01", 80), ("AL102", 80), ("AL15", 120), ("AL90", 10)]),
+    ("PRA72", "Pasta e cannellini con cavolo nero", "Legumi", "Media", AI, 15, 35,
+     [("AL01", 60), ("AL96", 120), ("AL130", 100), ("AL13", 50), ("AL90", 10)]),
+    ("PRA73", "Risotto al salmone", "Pesce", "Alta", TUTTE, 15, 30,
+     [("AL02", 80), ("AL39", 80), ("AL128", 15), ("AL90", 10)]),
+    ("PRA74", "Polenta con ragù di lenticchie", "Legumi", "Bassa", AI, 15, 30,
+     [("AL108", 70), ("AL10", 120), ("AL13", 100), ("AL16", 40), ("AL90", 10)]),
+    ("PRA75", "Pasta con zucchine e uova", "Uova", "Media", PE, 10, 20,
+     [("AL01", 80), ("AL15", 150), ("AL30", 1), ("AL27", 10), ("AL90", 10)]),
+    ("PRA76", "Couscous con pollo e verdure", "Carne bianca", "Alta", TUTTE, 15, 25,
+     [("AL05", 70), ("AL33", 100), ("AL95", 80), ("AL15", 80), ("AL90", 10)]),
+    ("PRA77", "Pasta al pesto con patate e fagiolini", "Nessuna", "Media", PE, 10, 25,
+     [("AL01", 80), ("AL49", 30), ("AL19", 80), ("AL17", 80)]),
+    ("PRA78", "Vellutata di zucca e lenticchie rosse con crostini", "Legumi", "Media", AI, 15, 35,
+     [("AL14", 200), ("AL11", 50), ("AL17", 80), ("AL43", 40), ("AL90", 10)]),
+    ("PRA79", "Pasta con salmone e piselli", "Pesce", "Alta", TUTTE, 15, 25,
+     [("AL01", 80), ("AL39", 70), ("AL12", 70), ("AL90", 10)]),
+    ("PRA80", "Polpettine di ceci con riso basmati", "Legumi", "Bassa", TUTTE, 20, 40,
+     [("AL03", 60), ("AL08", 100), ("AL41", 15), ("AL16", 50), ("AL90", 10)]),
+    ("CEN61", "Burger di cannellini e spinaci con patate al forno", "Legumi", "Bassa", TUTTE, 20, 40,
+     [("AL96", 120), ("AL18", 80), ("AL41", 20), ("AL17", 150), ("AL90", 10)]),
+    ("CEN62", "Pollo alla pizzaiola con fagiolini", "Carne bianca", "Alta", TUTTE, 10, 25,
+     [("AL33", 150), ("AL13", 100), ("AL93", 30), ("AL118", 1), ("AL19", 150), ("AL90", 10)]),
+    ("CEN63", "Frittata al forno con patate e piselli", "Uova", "Media", TUTTE, 15, 40,
+     [("AL30", 2), ("AL17", 120), ("AL12", 60), ("AL27", 10), ("AL90", 5)]),
+    ("CEN64", "Merluzzo al forno con patate e pomodorini", "Pesce", "Alta", TUTTE, 15, 40,
+     [("AL37", 160), ("AL17", 150), ("AL21", 80), ("AL90", 10)]),
+    ("CEN65", "Piadina con ricotta e spinaci", "Formaggi", "Media", TUTTE, 10, 20,
+     [("AL131", 1), ("AL28", 80), ("AL18", 100), ("AL90", 5)]),
+    ("CEN66", "Zuppa di ceci e patate con pane tostato", "Legumi", "Bassa", AI, 10, 35,
+     [("AL08", 150), ("AL17", 120), ("AL16", 60), ("AL128", 20), ("AL43", 30), ("AL90", 10)]),
+    ("CEN67", "Fesa di tacchino al latte con carote", "Carne bianca", "Alta", TUTTE, 10, 30,
+     [("AL34", 150), ("AL25", 80), ("AL42", 10), ("AL16", 150), ("AL90", 5)]),
+    ("CEN68", "Salmone gratinato con zucchine", "Pesce", "Alta", TUTTE, 10, 30,
+     [("AL39", 150), ("AL41", 15), ("AL15", 150), ("AL90", 10)]),
+    ("CEN69", "Sformato di cavolfiore e mozzarella", "Formaggi", "Media", AI, 15, 45,
+     [("AL99", 200), ("AL93", 50), ("AL27", 15), ("AL25", 50), ("AL41", 10)]),
+    ("CEN70", "Polpette di platessa e zucchine con patate", "Pesce", "Alta", TUTTE, 20, 40,
+     [("AL38", 130), ("AL15", 80), ("AL41", 20), ("AL30", 0.3), ("AL17", 150)]),
+    ("CEN71", "Uova al pomodoro con pane tostato", "Uova", "Bassa", TUTTE, 5, 20,
+     [("AL30", 2), ("AL13", 150), ("AL43", 40), ("AL90", 5)]),
+    ("CEN72", "Crema di lenticchie rosse e carote con crostini", "Legumi", "Bassa", TUTTE, 10, 30,
+     [("AL11", 60), ("AL16", 100), ("AL17", 80), ("AL43", 40), ("AL90", 10)]),
+    ("CEN73", "Spiedini di pollo e verdure al forno", "Carne bianca", "Alta", PE, 20, 40,
+     [("AL33", 150), ("AL95", 80), ("AL15", 80), ("AL90", 10)]),
+    ("CEN74", "Torta salata di zucca e ricotta", "Formaggi", "Media", AI, 15, 50,
+     [("AL44", 0.4), ("AL14", 150), ("AL28", 80), ("AL30", 0.4)]),
+    ("CEN75", "Merluzzo surgelato in umido con piselli", "Pesce", "Bassa", TUTTE, 10, 30,
+     [("AL120", 160), ("AL12", 100), ("AL13", 100), ("AL90", 10)]),
+    ("CEN76", "Mozzarella in carrozza al forno con insalata", "Formaggi", "Media", TUTTE, 15, 30,
+     [("AL43", 60), ("AL93", 80), ("AL30", 0.5), ("AL25", 30), ("AL114", 80), ("AL90", 5)]),
+    ("CEN77", "Hamburger di pollo e zucchine con patate", "Carne bianca", "Alta", TUTTE, 20, 45,
+     [("AL33", 140), ("AL15", 60), ("AL41", 15), ("AL17", 150), ("AL90", 10)]),
+    ("CEN78", "Polenta con fagioli borlotti al pomodoro", "Legumi", "Bassa", AI, 10, 30,
+     [("AL108", 60), ("AL09", 150), ("AL13", 100), ("AL90", 10)]),
+    ("CEN79", "Insalata di patate, fagiolini, tonno e uova", "Pesce", "Media", PE, 15, 30,
+     [("AL17", 150), ("AL19", 100), ("AL40", 60), ("AL30", 1), ("AL90", 10)]),
+    ("CEN80", "Crespelle ricotta e spinaci al forno", "Formaggi", "Media", TUTTE, 25, 50,
+     [("AL42", 25), ("AL25", 60), ("AL30", 0.5), ("AL28", 80), ("AL18", 100), ("AL27", 10)]),
+]
+
+
+def leggi_procedimenti():
+    proc = {}
+    with open(os.path.join(RADICE, "strumenti", "procedimenti.txt"), encoding="utf-8") as f:
+        for riga in f:
+            riga = riga.strip()
+            if not riga or riga.startswith("#"):
+                continue
+            parti = [x.strip() for x in riga.split("|")]
+            proc[parti[0]] = [x for x in parti[1:] if x]
+    return proc
+
+
 def num(s):
     s = (s or "").strip().replace(",", ".")
     return float(s) if s else 0.0
@@ -395,6 +502,28 @@ def main():
             if contorno.strip():
                 ric["contorno"] = contorno.strip()
             ricette.append(ric)
+
+    for rid, nome, prot, dep, stag, prep, tot, ingr in NUOVE:
+        for aid, _ in ingr:
+            if aid not in alimenti:
+                avvisi.append(f"{rid}: alimento sconosciuto {aid}")
+        ricette.append({
+            "id": rid, "nome": nome, "pasto": "pranzo" if rid.startswith("PRA") else "cena",
+            "proteina": prot, "deperibilita": dep, "stagioni": stagioni(stag),
+            "tempoPrep": prep, "tempoTotale": tot,
+            "ingredienti": [{"id": aid, "q": q} for aid, q in ingr if aid in alimenti],
+        })
+
+    proc = leggi_procedimenti()
+    for r in ricette:
+        if r["id"] in proc:
+            r["procedimento"] = proc[r["id"]]
+        else:
+            avvisi.append(f"{r['id']}: manca il procedimento")
+    for rid in proc:
+        if not any(r["id"] == rid for r in ricette):
+            avvisi.append(f"procedimento per ricetta inesistente {rid}")
+    ricette.sort(key=lambda r: (r["pasto"] != "pranzo", r["id"]))
 
     for a in alimenti.values():
         if a.get("surgelato") and a["surgelato"] not in alimenti:
