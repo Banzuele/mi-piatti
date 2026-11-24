@@ -27,6 +27,16 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = (v) => String(Math.round(v * 100) / 100).replace(".", ",");
 const imp = () => ({ ...IMPOSTAZIONI_PREDEFINITE, ...(S.impostazioni.generali || {}) });
+// Porzioni di un pasto: quelle del calendario, oppure quelle scelte a mano nel menù
+function moltPasto(k) {
+  const [d, p] = k.split("_");
+  const base = infoGiorno(d, S.giorniCasa, imp()).moltiplicatori[p];
+  const f = S.pasti[k]?.molt;
+  const forzato = f != null && f !== base;
+  return { valore: forzato ? f : base, base, forzato };
+}
+const porzioniForzate = () => Object.fromEntries(Object.entries(S.pasti)
+  .filter(([k, v]) => v.molt != null).map(([k, v]) => [k, v.molt]));
 const piano = () => Object.fromEntries(Object.entries(S.pasti).map(([k, v]) => [k, v.ricetta]));
 const idCasuale = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
@@ -172,14 +182,18 @@ function vistaMenu() {
       const k = chiavePasto(d, p);
       const r = S.ricettePerId.get(P[k]);
       const sel = S.scambio === k ? "selezionato" : "";
-      h += `<button class="pasto ${sel}" data-azione="pasto" data-chiave="${k}">
+      const m = moltPasto(k);
+      h += `<div class="pasto-riga ${sel}">
+      <button class="pasto" data-azione="pasto" data-chiave="${k}">
         <span class="pasto-ico">${PASTO[p].ico}</span>
         <span class="pasto-testo">
           <span class="pasto-nome">${r ? esc(r.nome) : "<em>— da scegliere —</em>"}</span>
           ${r ? `<span class="pasto-info">${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min</span>` : ""}
         </span>
-        <span class="molt">×${num(info.moltiplicatori[p])}</span>
-      </button>`;
+      </button>
+      <button class="molt ${m.forzato ? "forzato" : ""}" data-azione="molt" data-chiave="${k}"
+        aria-label="Porzioni: ${num(m.valore)}. Tocca per cambiare" title="${m.forzato ? `Modificato (di solito ×${num(m.base)})` : "Tocca per cambiare le porzioni"}">×${num(m.valore)}</button>
+      </div>`;
     }
     h += `</section>`;
   }
@@ -317,7 +331,7 @@ function vediRicetta(id, k) {
   if (k) {
     const [d, p] = k.split("_");
     data = d;
-    molt = infoGiorno(d, S.giorniCasa, imp()).moltiplicatori[p];
+    molt = moltPasto(k).valore;
   }
   const righe = r.ingredienti.map((i) => {
     const a = S.alimentiPerId.get(i.id);
@@ -348,7 +362,7 @@ function vediRicetta(id, k) {
 function vociSpesa() {
   const voci = calcolaSpesa({
     piano: piano(), sabato: S.settimana, ricettePerId: S.ricettePerId,
-    alimentiPerId: S.alimentiPerId, giorniCasa: S.giorniCasa, imp: imp(),
+    alimentiPerId: S.alimentiPerId, giorniCasa: S.giorniCasa, imp: imp(), porzioni: porzioniForzate(),
   }).map((v) => ({ ...v, chiave: `${S.settimana}_${v.id}`, fatto: !!S.spunte[`${S.settimana}_${v.id}`]?.fatto }));
   const extra = Object.entries(S.extra)
     .filter(([, e]) => e.settimana === S.settimana)
@@ -485,7 +499,7 @@ function vistaAltro() {
       <button class="btn primario">Salva</button>
     </form>
   </section>
-  <p class="nota centro">Mi-Piatti v3 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+  <p class="nota centro">Mi-Piatti v4 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
 }
 
 // ---------------------------------------------------------------- modale
@@ -526,6 +540,13 @@ document.addEventListener("click", async (e) => {
     case "apri-genera": apriGenera(); break;
     case "genera": await genera(); break;
     case "pasto": apriPasto(chiave); break;
+    case "molt": {
+      const I = imp(), m = moltPasto(chiave);
+      const nuovo = m.valore === I.moltFamiglia ? I.moltPranzoFeriale : I.moltFamiglia;
+      archivio.scrivi("pasti", chiave, { molt: nuovo === m.base ? null : nuovo });
+      avviso(`Porzioni ×${num(nuovo)}: lista della spesa aggiornata`);
+      break;
+    }
     case "cambia": cambia(chiave); break;
     case "scegli": scegli(chiave); break;
     case "scelto":

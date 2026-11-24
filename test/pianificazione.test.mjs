@@ -98,5 +98,9 @@ test("spesa: somma porzioni e usa il pesce surgelato da martedì", () => {
   assert.equal(v("AL01").quantita, 120);
   // ordine reparti: verdure prima del banco frigo, congelati dopo
   const idx = (r) => lista.findIndex((x) => x.reparto === r);
+  // porzioni cambiate a mano: la cena di sabato per 1 sola persona
+  const ridotta = calcolaSpesa({ piano, sabato: sab, ricettePerId, alimentiPerId,
+    porzioni: { [chiavePasto("2026-11-28", "cena")]: 1 } });
+  assert.equal(ridotta.find((x) => x.id === "AL37").quantita, 200);
   assert.ok(idx("verdure") < idx("banco_frigo") && idx("banco_frigo") < idx("congelati"));
 });
