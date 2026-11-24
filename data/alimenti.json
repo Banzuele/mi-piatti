@@ -114,5 +114,9 @@
 {"id": "AL124", "nome": "Calamari surgelati", "reparto": "congelati", "tipo": "fresco", "unita": "g"},
 {"id": "AL125", "nome": "Polpo surgelato", "reparto": "congelati", "tipo": "fresco", "unita": "g"},
 {"id": "AL126", "nome": "Cozze surgelate", "reparto": "congelati", "tipo": "fresco", "unita": "g"},
-{"id": "AL127", "nome": "Vongole surgelate", "reparto": "congelati", "tipo": "fresco", "unita": "g"}
+{"id": "AL127", "nome": "Vongole surgelate", "reparto": "congelati", "tipo": "fresco", "unita": "g"},
+{"id": "AL128", "nome": "Cipolle", "reparto": "verdure", "tipo": "dispensa", "unita": "g"},
+{"id": "AL129", "nome": "Sedano", "reparto": "verdure", "tipo": "fresco", "unita": "g"},
+{"id": "AL130", "nome": "Cavolo nero", "reparto": "verdure", "tipo": "fresco", "unita": "g"},
+{"id": "AL131", "nome": "Piadine", "reparto": "pane", "tipo": "fresco", "unita": "pz", "conf": 3, "confNome": "confezione"}
 ]

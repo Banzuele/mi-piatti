@@ -7,7 +7,7 @@ App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena
 - **Menù**: genera da 1 a 4 settimane rispettando stagione, deperibilità (Alta sab-lun, Media mar-mer, Bassa gio-ven), massimo 2 ripetizioni per ricetta, proteine diverse tra pranzo e cena e le regole settimanali (pesce e legumi almeno 2 volte, carne rossa al massimo 2). Ogni pasto si può cambiare, scegliere dall'elenco o scambiare con un altro giorno.
 - **Porzioni**: pranzo feriale ×1 (solo la compagna), cene, weekend, festività nazionali, ferie e mensa chiusa ×2,5. Le festività (Pasqua compresa) sono calcolate in automatico; ferie e chiusure della mensa si inseriscono in *Altro*.
 - **Spesa**: somma gli ingredienti della settimana, con quantità, confezioni e giorni in cui servono. Ordine reparti: verdure, frutta, banco frigo, pasta, conserve, salumi e formaggi, congelati, bevande, pane. Il pesce dei pasti da martedì a venerdì diventa la versione surgelata. Spunte condivise, voci libere, pulsante "Copia come testo" con caselle `[ ]`.
-- **Ricette**: 110 ricette (53 pranzi, 57 cene), dosi per una porzione, con tempi di preparazione attiva e totale. Quelle oltre 30 min attivi o 60 totali restano visibili ma non vengono proposte.
+- **Ricette**: 150 ricette (73 pranzi, 77 cene), dosi per una porzione, con tempi di preparazione attiva e totale e il procedimento passo per passo. Quelle oltre 30 min attivi o 60 totali restano visibili ma non vengono proposte.
 
 ## Pubblicare l'app (GitHub Pages)
 
@@ -44,7 +44,7 @@ L'Excel resta l'archivio. I CSV esportati stanno in `archivio/`; lo script li co
 python3 strumenti/importa_dati.py   # scrive data/ricette.json e data/alimenti.json
 ```
 
-Per piccole modifiche si possono anche correggere direttamente `data/ricette.json` e `data/alimenti.json`.
+Le ricette nuove (non presenti nell'Excel) sono nell'elenco `NUOVE` dello script, e i procedimenti in `strumenti/procedimenti.txt` (una riga per ricetta). Per piccole modifiche si possono anche correggere direttamente `data/ricette.json` e `data/alimenti.json`.
 
 ## Sviluppo
 

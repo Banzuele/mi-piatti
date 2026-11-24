@@ -338,6 +338,8 @@ function vediRicetta(id, k) {
     <h3>Ingredienti ${molt === 1 ? "(1 porzione)" : `(×${num(molt)} porzioni)`}</h3>
     <ul class="ingredienti">${righe}</ul>
     ${r.contorno ? `<p class="nota">Contorno e frutta: ${esc(r.contorno)}</p>` : ""}
+    ${r.procedimento?.length ? `<h3>Procedimento</h3>
+    <ol class="procedimento">${r.procedimento.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>` : ""}
     ${r.link ? `<p><a href="${esc(r.link)}" target="_blank" rel="noopener">Apri la ricetta online ↗</a></p>` : ""}
     <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
 }
