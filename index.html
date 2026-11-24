@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mi-Piatti</title>
+  <meta name="description" content="Menù settimanale e lista della spesa condivisi per la famiglia.">
+  <meta name="theme-color" content="#2f6b4f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icona-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icona-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mi-Piatti">
+  <link rel="stylesheet" href="css/stile.css">
+</head>
+<body>
+  <header class="testata">
+    <h1>Mi-Piatti</h1>
+    <span id="stato-sync" class="stato-sync"></span>
+  </header>
+
+  <main id="contenuto" class="contenuto">
+    <p class="vuoto">Caricamento…</p>
+  </main>
+
+  <nav class="schede" id="schede">
+    <button data-scheda="menu" class="attiva"><span class="ico">🍽️</span>Menù</button>
+    <button data-scheda="spesa"><span class="ico">🛒</span>Spesa</button>
+    <button data-scheda="ricette"><span class="ico">📖</span>Ricette</button>
+    <button data-scheda="altro"><span class="ico">⚙️</span>Altro</button>
+  </nav>
+
+  <div id="modale" class="modale" hidden></div>
+  <div id="avviso" class="avviso" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

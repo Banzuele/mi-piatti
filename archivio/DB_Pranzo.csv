@@ -1,0 +1,61 @@
+ID_Ricetta;Nome_Ricetta;Pasto;Ingrediente_1;QTY_1;Ingrediente_2;QTY_2;Ingrediente_3;QTY_3;Contorno_Frutta;Categoria_Proteica;Deperibilita;Stagione;
+PRA01;Pasta al Pomodoro e Basilico;Pranzo;Pasta Corta;120;Passata Pomodoro;150;;;Fagiolini vapore + Frutta Stagione;Nessuna (Solo Carbo);Bassa;Tutte;
+PRA02;Risotto Crema di Zucca;Pranzo;Riso;100;Zucca;200;Parmigiano;20;Carote morbide + Banana;Formaggio (Bassa);Media;Autunno/Inverno;
+PRA03;Pasta e Ceci Cremosa;Pranzo;Pasta Corta;100;Ceci Precotti;150;;;Zucchine lesse + Mela;Legumi;Bassa;Tutte;
+PRA04;Couscous Pesto e Zucchine;Pranzo;Couscous;100;Pesto senz'aglio;50;Zucchine;150;Pomodorini cotti + Frutta Stagione;Formaggio (Bassa);Media;Primavera/Estate;
+PRA05;Gnocchi Patate Ragù Lenticchie;Pranzo;Gnocchi Patate;350;Lenticchie Scatola;150;Passata Pomodoro;80;Finocchi vapore + Pera;Legumi;Bassa;Tutte;
+PRA06;Riso Basmati Crema Piselli;Pranzo;Riso Basmati;100;Piselli Surgelati;150;;;Carote lesse + Banana;Legumi;Bassa;Tutte;
+PRA07;Pasta Crema di Peperoni;Pranzo;Pasta Corta;100;Peperoni;200;Robiola;50;Patate lesse + Frutta Stagione;Formaggio (Media);Alta;Estate/Autunno;
+PRA08;Risotto alle Carote;Pranzo;Riso;100;Carote;150;Parmigiano;30;Piselli vapore + Pera;Formaggio (Bassa);Bassa;Tutte;
+PRA09;Risotto Zafferano e Parmigiano;Pranzo;Riso;100;Parmigiano;40;Burro;20;Fagiolini vapore + Mela;Formaggio (Alta);Bassa;Tutte;
+PRA10;Couscous Ceci e Carote;Pranzo;Couscous;100;Ceci Precotti;150;Carote;150;Zucchine morbide + Banana;Legumi;Bassa;Tutte;
+PRA11;Pasta Ricotta e Pomodorini;Pranzo;Pasta Corta;100;Ricotta;100;Pomodorini;100;Spinaci morbidi + Frutta Stagione;Formaggio (Alta);Alta;Primavera/Estate;
+PRA12;Gnocchi Burro e Salvia;Pranzo;Gnocchi Patate;350;Burro;30;Parmigiano;30;Zucchine trifolate + Mela;Formaggio (Alta);Media;Tutte;
+PRA13;Farro Crema Zucchine;Pranzo;Farro Perlato;100;Zucchine;200;;;Pomodorini cotti + Banana;Nessuna (Solo Carbo);Media;Primavera/Estate;
+PRA14;Pasta Ragù Verdure Frullate;Pranzo;Pasta Corta;100;Zucchine;100;Carote;100;Patate lesse + Pera;Nessuna (Solo Carbo);Media;Tutte;
+PRA15;Risotto Parmigiano e Burro;Pranzo;Riso;100;Parmigiano;40;Burro;25;Carote lesse + Frutta Stagione;Formaggio (Alta);Bassa;Tutte;
+PRA16;Pasta Crema di Broccoli;Pranzo;Pasta Corta;100;Broccoli;200;Parmigiano;30;Patate morbide + Mela;Formaggio (Bassa);Alta;Autunno/Inverno;
+PRA17;Passato Verdure con Pastina;Pranzo;Pastina;80;Patate;100;Zucchine;100;Piatto Unico + Banana;Nessuna (Solo Carbo);Media;Tutte;
+PRA18;Couscous Crema di Zucca;Pranzo;Couscous;100;Zucca;200;Robiola;50;Spinaci vapore + Pera;Formaggio (Alta);Alta;Autunno/Inverno;
+PRA19;Pasta Crema Cannellini;Pranzo;Pasta Corta;100;Fagioli Cannellini;150;Passata Pomodoro;50;Carote vapore + Frutta Stagione;Legumi;Bassa;Tutte;
+PRA20;Riso e Patate (Minestra);Pranzo;Riso;80;Patate;200;Parmigiano;30;Fagiolini vapore + Mela;Formaggio (Bassa);Bassa;Tutte;
+PRA21;Pasta Pesto di Zucchine;Pranzo;Pasta Corta;100;Zucchine;200;Parmigiano;30;Pomodorini cotti + Banana;Formaggio (Bassa);Media;Primavera/Estate;
+PRA22;Risotto Spinaci e Robiola;Pranzo;Riso;100;Spinaci;150;Robiola;50;Patate lesse + Pera;Formaggio (Alta);Alta;Inverno/Primavera;
+PRA23;Minestra Lenticchie Rosse;Pranzo;Lenticchie Rosse;120;Carote;100;Patate;80;Piatto Unico + Frutta Stagione;Legumi;Bassa;Tutte;
+PRA24;Pasta Panna e Piselli;Pranzo;Pasta Corta;100;Piselli Surgelati;150;Latte Intero;50;Zucchine lesse + Mela;Legumi;Bassa;Tutte;
+PRA25;Couscous Feta Pomodorini;Pranzo;Couscous;100;Feta;80;Pomodorini;150;Carote lesse + Banana;Formaggio (Alta);Alta;Estate;
+PRA26;Gnocchi Crema di Zucca;Pranzo;Gnocchi Patate;350;Zucca;200;Parmigiano;30;Fagiolini vapore + Frutta Stagione;Formaggio (Bassa);Media;Autunno/Inverno;
+PRA27;Riso al Latte;Pranzo;Riso;100;Latte Intero;250;Parmigiano;30;Spinaci morbidi + Pera;Latticini;Media;Tutte;
+PRA28;Pasta Cavolfiore Besciamella;Pranzo;Pasta Corta;100;Cavolfiore;200;Latte Intero;100;Patate lesse + Mela;Latticini;Alta;Inverno;
+PRA29;Risotto Pomodoro Dolce;Pranzo;Riso;100;Passata Pomodoro;150;;;Piselli vapore + Banana;Nessuna (Solo Carbo);Bassa;Tutte;
+PRA30;Pasta Fagioli Borlotti;Pranzo;Pasta Corta;100;Fagioli Borlotti;150;;;Zucchine lesse + Frutta Stagione;Legumi;Bassa;Tutte;
+PRA31;Risotto con Zucca e Rosmarino;Pranzo;Riso Carnaroli;90;Zucca;200;Olio EVO;10;Formaggio Grattugiato;15;Nessuna;Media;Autunno
+PRA32;Pasta al Pesto di Rucola e Pinoli;Pranzo;Pasta;80;Rucola;50;Pinoli;15;Olio EVO;15;Nessuna;Bassa;Primavera
+PRA33;Insalata di Farro con Tonno e Ciliegini;Pranzo;Farro;80;Tonno in scatola;80;Pomodorini;100;Olio EVO;10;Pesce;Alta;Estate
+PRA34;Couscous con Verdure e Ceci;Pranzo;Couscous;80;Ceci in scatola;120;Zucchine;100;Olio EVO;10;Legumi;Bassa;Tutte
+PRA35;Gnocchi al Pomodoro e Mozzarella;Pranzo;Gnocchi di patate;180;Passata di pomodoro;100;Mozzarella;80;Olio EVO;10;Formaggio;Alta;Tutte
+PRA36;Penne all'Arrabbiata;Pranzo;Pasta;85;Passata di pomodoro;120;Aglio;5;Peperoncino;2;Nessuna;Bassa;Tutte
+PRA37;Farfalle Salmone e Zucchine;Pranzo;Pasta;80;Salmone fresco;90;Zucchine;100;Olio EVO;10;Pesce;Alta;Tutte
+PRA38;Pasta con Broccoli e Acciughe;Pranzo;Pasta;80;Broccoli;150;Acciughe;20;Olio EVO;10;Pesce;Media;Inverno
+PRA39;Risotto ai Funghi Porcini;Pranzo;Riso Carnaroli;90;Funghi porcini;120;Aglio;5;Olio EVO;10;Nessuna;Media;Autunno
+PRA40;Orecchiette con Cime di Rapa;Pranzo;Orecchiette;85;Cime di rapa;150;Acciughe;15;Olio EVO;10;Pesce;Media;Inverno
+PRA41;Riso Venere con Gamberetti e Zucchine;Pranzo;Riso Venere;80;Gamberetti;100;Zucchine;100;Olio EVO;10;Pesce;Alta;Estate
+PRA42;Insalata di Riso Classica;Pranzo;Riso Parboiled;80;Condiriso;60;Uova;50;Olio EVO;10;Uova;Bassa;Estate
+PRA43;Spaghetti alle Vongole;Pranzo;Spaghetti;85;Vongole;150;Aglio;5;Prezzemolo;5;Pesce;Alta;Tutte
+PRA44;Fusilli con Crema di Peperoni;Pranzo;Pasta;80;Peperoni;150;Ricotta;40;Olio EVO;10;Formaggio;Media;Estate
+PRA45;Paccheri al Ragù di Verdure;Pranzo;Pasta;85;Melanzane;80;Zucchine;80;Passata di pomodoro;80;Nessuna;Media;Estate
+PRA46;Trofie al Pesto Genovese;Pranzo;Trofie;85;Pesto alla genovese;40;Patate;50;Olio EVO;5;Nessuna;Bassa;Tutte
+PRA47;Lasagne alle Verdure;Pranzo;Pasta per lasagne;80;Besciamella;100;Zucchine;100;Formaggio Grattugiato;20;Formaggio;Media;Tutte
+PRA48;Quinoa con Verdure e Feta;Pranzo;Quinoa;75;Feta;60;Cetrioli;80;Olio EVO;10;Formaggio;Media;Estate
+PRA49;Spaghetti alla Carbonara;Pranzo;Spaghetti;85;Guanciale;40;Tuorlo d'uovo;40;Pecorino;20;Carne;Alta;Tutte
+PRA50;Penne alla Norma;Pranzo;Pasta;85;Melanzane;120;Passata di pomodoro;100;Ricotta salata;30;Formaggio;Media;Estate
+PRA51;Risotto allo Zafferano;Pranzo;Riso Carnaroli;90;Zafferano;1;Burro;15;Formaggio Grattugiato;20;Formaggio;Bassa;Tutte
+PRA52;Pasta e Fagioli;Pranzo;Pasta;60;Fagioli borlotti;150;Passata di pomodoro;50;Olio EVO;10;Legumi;Bassa;Inverno
+PRA53;Minestrone di Verdure con Orzo;Pranzo;Orzo perlato;70;Minestrone surgelato;200;Olio EVO;10;Formaggio Grattugiato;10;Nessuna;Bassa;Inverno
+PRA54;Cannelloni Ricotta e Spinaci;Pranzo;Cannelloni;80;Ricotta;100;Spinaci;100;Passata di pomodoro;80;Formaggio;Alta;Tutte
+PRA55;Tagliatelle ai Funghi e Noci;Pranzo;Tagliatelle;80;Funghi misti;120;Noci;15;Olio EVO;10;Nessuna;Media;Autunno
+PRA56;Spaghetti Aglio Olio e Peperoncino;Pranzo;Spaghetti;90;Aglio;5;Olio EVO;15;Peperoncino;2;Nessuna;Bassa;Tutte
+PRA57;Insalata Fredda di Pasta con Pesto e Ciliegini;Pranzo;Pasta;80;Pesto alla genovese;30;Pomodorini;100;Mozzarella;50;Formaggio;Alta;Estate
+PRA58;Polenta con Funghi Trifolati;Pranzo;Polenta;80;Funghi misti;150;Aglio;5;Olio EVO;10;Nessuna;Bassa;Inverno
+PRA59;Calamarata con Frutti di Mare;Pranzo;Pasta;85;Misto mare;150;Pomodorini;80;Olio EVO;10;Pesce;Alta;Tutte
+PRA60;Risotto con Asparagi e Taleggio;Pranzo;Riso Carnaroli;90;Asparagi;120;Taleggio;40;Olio EVO;10;Formaggio;Media;Primavera

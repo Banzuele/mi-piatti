@@ -1,0 +1,61 @@
+ID_Ricetta;Nome_Ricetta;Pasto;Ingrediente_1;QTY_1;Ingrediente_2;QTY_2;Ingrediente_3;QTY_3;Contorno_Frutta;Categoria_Proteica;Deperibilita;Stagione;
+CEN01;Polpette Tacchino Forno;Cena;Macinato Tacchino;500;Zucchine;200;Pangrattato;50;Patate spicchi forno;Carne Bianca;Alta;Tutte;
+CEN02;Filetto Merluzzo in Umido;Cena;Merluzzo Filetti;500;Passata Pomodoro;200;Pomodorini;100;Fagiolini morbidi;Pesce;Alta;Tutte;
+CEN03;Frittata Forno Spinaci;Cena;Uova;6;Spinaci;300;Parmigiano;50;Carote lesse;Uova;Alta;Inverno/Primavera;
+CEN04;Bocconcini Pollo al Latte;Cena;Petto di Pollo;500;Latte Intero;200;Farina;30;Purè di Patate;Carne Bianca;Alta;Tutte;
+CEN05;Hamburger Manzo Casalingo;Cena;Macinato Manzo;500;Parmigiano;50;Pangrattato;30;Zucchine forno;Carne Rossa;Alta;Tutte;
+CEN06;Trancio Salmone al Forno;Cena;Salmone Trancio;500;Patate;400;Pomodorini;150;Pomodorini forno;Pesce;Alta;Tutte;
+CEN07;Uova Sode e Purè;Cena;Uova;6;Patate;500;Latte Intero;100;Spinaci ripassati morbidi;Uova;Media;Tutte;
+CEN08;Straccetti Tacchino Limone;Cena;Fesa Tacchino;500;Farina;50;;;Carote vapore;Carne Bianca;Alta;Tutte;
+CEN09;Polpette Ricotta Parmigiano;Cena;Ricotta;400;Parmigiano;100;Pangrattato;80;Fagiolini vapore;Formaggio;Alta;Tutte;
+CEN10;Sogliola Platessa Vapore;Cena;Platessa Filetti;500;Patate;400;Latte Intero;100;Purè di Patate;Pesce;Alta;Tutte;
+CEN11;Arrosto Maiale al Latte;Cena;Lonza Maiale;600;Latte Intero;400;Burro;40;Patate forno morbide;Carne Bianca/Suino;Media;Tutte;
+CEN12;Torta Salata Zucchine;Cena;Pasta Sfoglia;1;Zucchine;400;Ricotta;200;Piatto Completo;Formaggio/Uova;Alta;Primavera/Estate;
+CEN13;Burger Ceci e Carote;Cena;Ceci Precotti;400;Carote;200;Pangrattato;80;Spinaci morbidi;Legumi;Bassa;Tutte;
+CEN14;Platessa Impanata Forno;Cena;Platessa Filetti;500;Pangrattato;100;;;Pomodorini al forno;Pesce;Alta;Tutte;
+CEN15;Uova Strapazzate Cremose;Cena;Uova;6;Latte Intero;50;Burro;30;Zucchine lesse;Uova;Media;Tutte;
+CEN16;Bocconcini Pollo Zucca;Cena;Petto di Pollo;500;Zucca;400;Farina;30;Patate lesse;Carne Bianca;Media;Autunno/Inverno;
+CEN17;Polpettone Manzo Forno;Cena;Macinato Manzo;500;Uova;1;Parmigiano;50;Carote forno;Carne Rossa;Alta;Tutte;
+CEN18;Tonno Scottato o Scatola;Cena;Tonno Scatola;400;Pomodorini;200;;;Patate lesse;Pesce;Bassa;Tutte;
+CEN19;Frittata Zucchine Padella;Cena;Uova;6;Zucchine;300;Parmigiano;50;Carote lesse;Uova;Alta;Primavera/Estate;
+CEN20;Straccetti Vitello Morbidi;Cena;Vitello Fettine;400;Farina;50;Burro;30;Piselli stufati;Carne Rossa;Alta;Tutte;
+CEN21;Polpette Pesce Merluzzo;Cena;Merluzzo Filetti;500;Patate;200;Pangrattato;50;Zucchine vapore;Pesce;Alta;Tutte;
+CEN22;Scaloppine Pollo Burro Salvia;Cena;Petto di Pollo;500;Burro;50;Farina;30;Purè di Patate;Carne Bianca;Alta;Tutte;
+CEN23;Ricotta Fresca Cucchiaio;Cena;Ricotta;400;Pane Fette;200;;;Spinaci morbidi;Formaggio;Alta;Tutte;
+CEN24;Burger Tacchino Spinaci;Cena;Macinato Tacchino;500;Spinaci;200;Pangrattato;50;Patate forno;Carne Bianca;Alta;Inverno/Primavera;
+CEN25;Merluzzo Gratinato Morbido;Cena;Merluzzo Filetti;500;Pangrattato;50;Pomodorini;100;Carote vapore;Pesce;Alta;Tutte;
+CEN26;Omelette Formaggio Filante;Cena;Uova;6;Prosciutto Cotto;100;Parmigiano;50;Zucchine morbide;Uova/Formaggio;Alta;Tutte;
+CEN27;Spezzatino Pollo Piselli;Cena;Petto di Pollo;500;Piselli Surgelati;300;Passata Pomodoro;150;Patate a cubetti;Carne Bianca;Media;Tutte;
+CEN28;Polpette Lenticchie Rosse;Cena;Lenticchie Rosse;300;Patate;150;Pangrattato;50;Fagiolini vapore;Legumi;Bassa;Tutte;
+CEN29;Torta Salata Cotto Patate;Cena;Pasta Sfoglia;1;Prosciutto Cotto;150;Patate;300;Piatto Completo;Carne/Affettato;Media;Tutte;
+CEN30;Fesa Tacchino Padella;Cena;Fesa Tacchino;500;Zucchine;300;;;Carote lesse;Carne Bianca;Alta;Primavera/Estate;
+CEN31;Filetto di Spigola al Cartoccio;Cena;Spigola filetto;180;Pomodorini;80;Olive nere;20;Olio EVO;10;Pesce;Alta;Tutte
+CEN32;Tagliata di Manzo con Rucola e Grana;Cena;Controfiletto di manzo;180;Rucola;40;Grana a scaglie;20;Olio EVO;10;Carne;Alta;Tutte
+CEN33;Frittata con Zucchine e Menta;Cena;Uova;120;Zucchine;150;Menta fresca;5;Olio EVO;10;Uova;Alta;Estate
+CEN34;Pollo al Curry con Riso Basmati;Cena;Petto di pollo;160;Riso Basmati;50;Curry in polvere;5;Olio EVO;10;Carne;Bassa;Tutte
+CEN35;Salmone alla Griglia con Asparagi;Cena;Salmone fresco;160;Asparagi;180;Olio EVO;10;Limone;10;Pesce;Alta;Primavera
+CEN36;Calamari Ripieni al Forno;Cena;Calamari;180;Pangrattato;30;Prezzemolo;5;Olio EVO;10;Pesce;Media;Tutte
+CEN37;Scaloppine al Limone;Cena;Fesa di vitello;160;Limone;20;Farina;15;Olio EVO;10;Carne;Media;Tutte
+CEN38;Involtini di Carne con Salvia;Cena;Fesa di vitello;150;Prosciutto crudo;30;Salvia;5;Olio EVO;10;Carne;Media;Tutte
+CEN39;Merluzzo con Pomodorini e Olive;Cena;Filetto di merluzzo;180;Pomodorini;100;Olive nere;20;Olio EVO;10;Pesce;Alta;Tutte
+CEN40;Torta Salata Spinaci e Ricotta;Cena;Pasta sfoglia;70;Ricotta;100;Spinaci;120;Uova;50;Formaggio;Media;Tutte
+CEN41;Polpette al Sugo di Pomodoro;Cena;Carne macinata magra;150;Passata di pomodoro;120;Uova;30;Olio EVO;10;Carne;Media;Tutte
+CEN42;Hamburger di Tacchino con Insalata;Cena;Hamburger di tacchino;160;Insalata mista;100;Olio EVO;10;Limone;5;Carne;Alta;Tutte
+CEN43;Polpo con Patate;Cena;Polpo;180;Patate;150;Prezzemolo;5;Olio EVO;10;Pesce;Alta;Tutte
+CEN44;Bocconcini di Pollo ai Funghi;Cena;Petto di pollo;160;Funghi misti;150;Aglio;5;Olio EVO;10;Carne;Media;Autunno
+CEN45;Filetto di Orata in Crosta di Patate;Cena;Orata filetto;180;Patate;100;Olio EVO;10;Rosmarino;5;Pesce;Alta;Tutte
+CEN46;Omelette con Formaggio ed Erba Cipollina;Cena;Uova;120;Mozzarella;50;Erba cipollina;5;Olio EVO;10;Uova;Alta;Tutte
+CEN47;Polpettone alle Verdure;Cena;Carne macinata magra;140;Zucchine;80;Carote;50;Uova;40;Carne;Media;Tutte
+CEN48;Hamburger di Lenticchie;Cena;Lenticchie in scatola;160;Pangrattato;30;Carote;50;Olio EVO;10;Legumi;Bassa;Tutte
+CEN49;Branzino al Sale;Cena;Branzino intero;220;Sale grosso;300;Olio EVO;10;Limone;10;Pesce;Alta;Tutte
+CEN50;Cosce di Pollo al Forno con Patate;Cena;Cosce di pollo;200;Patate;150;Rosmarino;5;Olio EVO;10;Carne;Media;Tutte
+CEN51;Carpaccio di Bresaola Rucola e Grana;Cena;Bresaola;100;Rucola;50;Grana a scaglie;20;Olio EVO;10;Carne;Alta;Tutte
+CEN52;Straccetti di Vitello con Rucola;Cena;Fesa di vitello;160;Rucola;50;Olio EVO;10;Aceto balsamico;5;Carne;Alta;Tutte
+CEN53;Tortino di Alici al Forno;Cena;Alici fresche;160;Pangrattato;30;Prezzemolo;5;Olio EVO;10;Pesce;Alta;Primavera
+CEN54;Zuppa di Cozze;Cena;Cozze;250;Passata di pomodoro;100;Aglio;5;Olio EVO;10;Pesce;Alta;Estate
+CEN55;Polpette di Merluzzo e Patate;Cena;Filetto di merluzzo;150;Patate;100;Pangrattato;20;Olio EVO;10;Pesce;Media;Tutte
+CEN56;Frittata di Porri e Patate;Cena;Uova;120;Porri;100;Patate;100;Olio EVO;10;Uova;Alta;Inverno
+CEN57;Tartare di Salmone e Avocado;Cena;Salmone fresco;150;Avocado;80;Limone;10;Olio EVO;10;Pesce;Alta;Estate
+CEN58;Roast Beef con Insalata;Cena;Roast beef;140;Insalata mista;100;Olio EVO;10;Limone;5;Carne;Alta;Tutte
+CEN59;Sgombro al Forno con Pomodorini;Cena;Sgombro filetto;160;Pomodorini;100;Origano;2;Olio EVO;10;Pesce;Alta;Tutte
+CEN60;Crostini con Stracciatella e Alici;Cena;Pane di grano duro;80;Stracciatella;80;Alici sott'olio;30;Olio EVO;5;Formaggio;Alta;Tutte
