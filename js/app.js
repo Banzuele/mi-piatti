@@ -7,13 +7,15 @@ import {
 } from "./calendario.js";
 import {
   PASTI, chiavePasto, generaPiano, scegliRicetta, entroTempi, surgelabile,
-  deperibilitaCompatibile, REGOLE_SETTIMANA,
+  deperibilitaCompatibile, REGOLE_SETTIMANA, motivoNoSpostamento as motivoNoSpost,
 } from "./pianificatore.js";
 import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita } from "./spesa.js";
 
 // ---------------------------------------------------------------- stato
 const S = {
   ricette: [], alimenti: [], ricettePerId: new Map(), alimentiPerId: new Map(),
+  ricetteBase: [], alimentiBase: [], tutteRicette: [], ricetteUtente: {}, alimentiUtente: {},
+  bozza: null, trascina: null, daRidisegnare: false,
   pasti: {}, spunte: {}, extra: {}, giorniCasa: {}, impostazioni: {},
   utente: null, pronto: false, inAttesa: false, errore: null,
   scheda: "menu", settimana: inizioSettimana(oggiISO()), scambio: null,
@@ -54,6 +56,24 @@ function avviso(testo, ms = 2500) {
   avviso.t = setTimeout(() => { el.hidden = true; }, ms);
 }
 
+// Ricette e alimenti = file del repository + aggiunte e modifiche fatte nell'app
+// (salvate in Firestore, condivise tra i telefoni).
+function ricalcolaDati() {
+  const al = new Map(S.alimentiBase.map((a) => [a.id, a]));
+  for (const [id, a] of Object.entries(S.alimentiUtente)) if (a?.nome) al.set(id, { ...a, id });
+  S.alimenti = [...al.values()];
+  S.alimentiPerId = al;
+  const base = new Map(S.ricetteBase.map((r) => [r.id, r]));
+  const rs = new Map(base);
+  for (const [id, d] of Object.entries(S.ricetteUtente)) {
+    if (d?.ricetta) rs.set(id, { ...d.ricetta, id, modificata: base.has(id), mia: !base.has(id) });
+    if (d?.nascosta && rs.has(id)) rs.set(id, { ...rs.get(id), nascosta: true });
+  }
+  S.tutteRicette = [...rs.values()];
+  S.ricette = S.tutteRicette.filter((r) => !r.nascosta);
+  S.ricettePerId = rs;
+}
+
 // ---------------------------------------------------------------- avvio
 async function avvia() {
   try {
@@ -61,10 +81,9 @@ async function avvia() {
       fetch("data/ricette.json", { cache: "no-cache" }).then((r) => r.json()),
       fetch("data/alimenti.json", { cache: "no-cache" }).then((r) => r.json()),
     ]);
-    S.ricette = ricette;
-    S.alimenti = alimenti;
-    S.ricettePerId = new Map(ricette.map((r) => [r.id, r]));
-    S.alimentiPerId = new Map(alimenti.map((a) => [a.id, a]));
+    S.ricetteBase = ricette;
+    S.alimentiBase = alimenti;
+    ricalcolaDati();
   } catch (e) {
     $contenuto.innerHTML = `<p class="vuoto">Impossibile caricare le ricette. Controlla la connessione e riapri l'app.</p>`;
     return;
@@ -77,9 +96,10 @@ async function avvia() {
     S.utente = utente;
     S.errore = null;
     if (utente) {
-      for (const coll of ["pasti", "spunte", "extra", "giorniCasa", "impostazioni"]) {
+      for (const coll of ["pasti", "spunte", "extra", "giorniCasa", "impostazioni", "ricetteUtente", "alimentiUtente"]) {
         stacca.push(archivio.ascolta(coll, (dati, meta) => {
           S[coll] = dati;
+          if (coll === "ricetteUtente" || coll === "alimentiUtente") ricalcolaDati();
           S.inAttesa = meta.inAttesa;
           S.pronto = true;
           disegna();
@@ -112,6 +132,7 @@ function disegnaStato() {
 }
 
 function disegna() {
+  if (S.trascina) { S.daRidisegnare = true; return; }
   disegnaStato();
   document.querySelectorAll("#schede button").forEach((b) =>
     b.classList.toggle("attiva", b.dataset.scheda === S.scheda));
@@ -183,7 +204,8 @@ function vistaMenu() {
       const r = S.ricettePerId.get(P[k]);
       const sel = S.scambio === k ? "selezionato" : "";
       const m = moltPasto(k);
-      h += `<div class="pasto-riga ${sel}">
+      h += `<div class="pasto-riga ${sel}" data-chiave="${k}">
+      ${r ? `<span class="maniglia" data-chiave="${k}" role="button" aria-label="Tieni premuto per spostare" title="Tieni premuto per spostare">☰</span>` : `<span class="maniglia vuota"></span>`}
       <button class="pasto" data-azione="pasto" data-chiave="${k}">
         <span class="pasto-ico">${PASTO[p].ico}</span>
         <span class="pasto-testo">
@@ -254,15 +276,10 @@ async function genera() {
 function apriPasto(k) {
   if (S.scambio) {
     if (S.scambio === k) { S.scambio = null; disegna(); return; }
-    const pA = S.scambio.split("_")[1], pB = k.split("_")[1];
-    if (pA !== pB) { avviso("Si possono scambiare solo pranzi con pranzi e cene con cene"); return; }
-    const a = S.pasti[S.scambio]?.ricetta || null, b = S.pasti[k]?.ricetta || null;
-    archivio.scriviMolti([
-      { coll: "pasti", id: S.scambio, dati: b ? { ricetta: b } : null },
-      { coll: "pasti", id: k, dati: a ? { ricetta: a } : null },
-    ]);
+    const motivo = motivoNoSpostamento(S.scambio, k);
+    if (motivo) { avviso(motivo, 3500); return; }
+    scambiaPasti(S.scambio, k);
     S.scambio = null;
-    avviso("Pasti scambiati");
     return;
   }
   const [d, p] = k.split("_");
@@ -277,6 +294,281 @@ function apriPasto(k) {
       ${r ? `<button class="btn largo pericolo" data-azione="svuota" data-chiave="${k}">🗑️ Togli questo pasto</button>` : ""}
     </div>
     <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
+}
+
+// ---------------------------------------------------------------- spostamento pasti
+// Si possono scambiare solo due pasti dello stesso tipo (pranzo/cena) le cui
+// ricette hanno la stessa deperibilità.
+function motivoNoSpostamento(a, b) {
+  return motivoNoSpost(a, b, S.ricettePerId.get(S.pasti[a]?.ricetta), S.ricettePerId.get(S.pasti[b]?.ricetta));
+}
+
+function scambiaPasti(a, b) {
+  const ra = S.pasti[a]?.ricetta, rb = S.pasti[b]?.ricetta;
+  archivio.scriviMolti([
+    { coll: "pasti", id: a, dati: { ricetta: rb } },
+    { coll: "pasti", id: b, dati: { ricetta: ra } },
+  ]);
+  avviso("Pasti spostati: spesa aggiornata");
+}
+
+function iniziaTrascina(maniglia, e) {
+  const k = maniglia.dataset.chiave;
+  const riga = maniglia.closest(".pasto-riga");
+  const st = { k, riga, maniglia, id: e.pointerId, x0: e.clientX, y0: e.clientY, attivo: false, sopra: null, scorri: 0 };
+  st.timer = setTimeout(() => attivaTrascina(st, e.clientY), 350);
+  S.trascina = st;
+  maniglia.setPointerCapture?.(e.pointerId);
+}
+
+function attivaTrascina(st, y) {
+  st.attivo = true;
+  navigator.vibrate?.(30);
+  st.riga.classList.add("sbloccata");
+  document.body.classList.add("trascinando");
+  for (const r of document.querySelectorAll(".pasto-riga[data-chiave]")) {
+    if (r === st.riga) continue;
+    r.classList.add(motivoNoSpostamento(st.k, r.dataset.chiave) ? "bersaglio-no" : "bersaglio-ok");
+  }
+  const rect = st.riga.getBoundingClientRect();
+  const fantasma = st.riga.cloneNode(true);
+  fantasma.classList.remove("sbloccata");
+  fantasma.classList.add("fantasma");
+  fantasma.style.width = `${rect.width}px`;
+  fantasma.style.left = `${rect.left}px`;
+  document.body.appendChild(fantasma);
+  st.fantasma = fantasma;
+  st.dy = y - rect.top;
+  muoviFantasma(st, y);
+  const passo = () => {
+    if (!S.trascina) return;
+    if (st.scorri) window.scrollBy(0, st.scorri);
+    st.raf = requestAnimationFrame(passo);
+  };
+  st.raf = requestAnimationFrame(passo);
+}
+
+function muoviFantasma(st, y) {
+  st.fantasma.style.top = `${y - st.dy}px`;
+  st.scorri = y < 110 ? -8 : y > window.innerHeight - 140 ? 8 : 0;
+}
+
+function trovaBersaglio(x, y) {
+  const el = document.elementFromPoint(x, y)?.closest(".pasto-riga[data-chiave]");
+  return el && !el.classList.contains("fantasma") ? el : null;
+}
+
+function fineTrascina(st, x, y, annulla) {
+  clearTimeout(st.timer);
+  cancelAnimationFrame(st.raf);
+  if (st.attivo) {
+    const b = annulla ? null : trovaBersaglio(x, y);
+    st.fantasma?.remove();
+    document.body.classList.remove("trascinando");
+    document.querySelectorAll(".sbloccata, .bersaglio-ok, .bersaglio-no, .sopra").forEach((r) =>
+      r.classList.remove("sbloccata", "bersaglio-ok", "bersaglio-no", "sopra"));
+    S.trascina = null;
+    if (b && b !== st.riga) {
+      const motivo = motivoNoSpostamento(st.k, b.dataset.chiave);
+      if (motivo) avviso(motivo, 3500); else scambiaPasti(st.k, b.dataset.chiave);
+    }
+  } else {
+    S.trascina = null;
+    if (!annulla) avviso("Tieni premuto ☰ per spostare il pasto");
+  }
+  if (S.daRidisegnare) { S.daRidisegnare = false; disegna(); }
+}
+
+document.addEventListener("pointerdown", (e) => {
+  const m = e.target.closest(".maniglia[data-chiave]");
+  if (!m || S.trascina) return;
+  e.preventDefault();
+  iniziaTrascina(m, e);
+});
+document.addEventListener("pointermove", (e) => {
+  const st = S.trascina;
+  if (!st || e.pointerId !== st.id) return;
+  if (!st.attivo) {
+    if (Math.hypot(e.clientX - st.x0, e.clientY - st.y0) > 12) fineTrascina(st, 0, 0, true);
+    return;
+  }
+  e.preventDefault();
+  muoviFantasma(st, e.clientY);
+  const b = trovaBersaglio(e.clientX, e.clientY);
+  if (st.sopra !== b) {
+    st.sopra?.classList.remove("sopra");
+    if (b && b !== st.riga) b.classList.add("sopra");
+    st.sopra = b;
+  }
+}, { passive: false });
+document.addEventListener("pointerup", (e) => {
+  const st = S.trascina;
+  if (st && e.pointerId === st.id) fineTrascina(st, e.clientX, e.clientY, false);
+});
+document.addEventListener("pointercancel", (e) => {
+  const st = S.trascina;
+  if (st && e.pointerId === st.id) fineTrascina(st, 0, 0, true);
+});
+document.addEventListener("contextmenu", (e) => { if (e.target.closest(".maniglia")) e.preventDefault(); });
+
+// ---------------------------------------------------------------- editor ricette
+const PROTEINE = ["Carne bianca", "Carne rossa", "Pesce", "Uova", "Formaggi", "Legumi", "Nessuna"];
+const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
+const NOMI_UNITA = { g: "g", ml: "ml", pz: "pz" };
+
+function nuovoIdRicetta(pasto) {
+  const pre = pasto === "cena" ? "CEN" : "PRA";
+  let max = 0;
+  for (const r of S.tutteRicette) {
+    const m = r.id.match(/^(PRA|CEN)(\d+)$/);
+    if (m && m[1] === pre) max = Math.max(max, Number(m[2]));
+  }
+  return `${pre}${String(max + 1).padStart(2, "0")}`;
+}
+
+function nuovoIdAlimento() {
+  let max = 0;
+  for (const a of S.alimenti) { const m = a.id.match(/^AL(\d+)$/); if (m) max = Math.max(max, Number(m[1])); }
+  return `AL${max + 1}`;
+}
+
+function apriEditor(id) {
+  const r = id ? S.ricettePerId.get(id) : null;
+  S.bozza = r ? {
+    id: r.id, nome: r.nome, pasto: r.pasto, proteina: r.proteina, deperibilita: r.deperibilita,
+    stagioni: [...r.stagioni], tempoPrep: r.tempoPrep, tempoTotale: r.tempoTotale,
+    ingredienti: r.ingredienti.map((i) => ({ ...i })), procedimento: [...(r.procedimento || [])],
+    contorno: r.contorno || "", link: r.link || "", nuovoAlimento: false,
+  } : {
+    id: null, nome: "", pasto: S.filtroPasto === "cena" ? "cena" : "pranzo", proteina: "Nessuna",
+    deperibilita: "Media", stagioni: [...STAGIONI], tempoPrep: 15, tempoTotale: 30,
+    ingredienti: [{ id: "", q: "" }], procedimento: [], contorno: "", link: "", nuovoAlimento: false,
+  };
+  disegnaEditor();
+}
+
+function disegnaEditor() {
+  const b = S.bozza;
+  const orig = b.id ? S.ricettePerId.get(b.id) : null;
+  const alimenti = [...S.alimenti].sort((x, y) => x.nome.localeCompare(y.nome, "it"));
+  const opz = (lista, val) => lista.map(([v, t]) => `<option value="${esc(v)}" ${v === val ? "selected" : ""}>${esc(t)}</option>`).join("");
+  apriModale(`<h2>${b.id ? "Modifica ricetta" : "Nuova ricetta"}</h2>
+  <form id="editor" class="editor" onsubmit="return false">
+    <label>Nome <input name="nome" value="${esc(b.nome)}" required placeholder="es. Pasta zucchine e ricotta"></label>
+    <div class="griglia-2">
+      <label>Pasto <select name="pasto" ${b.id ? "disabled" : ""}>${opz([["pranzo", "Pranzo"], ["cena", "Cena"]], b.pasto)}</select></label>
+      <label>Proteina <select name="proteina">${opz(PROTEINE.map((p) => [p, p]), b.proteina)}</select></label>
+      <label>Deperibilità <select name="deperibilita">${opz([["Alta", "Alta (sab-lun)"], ["Media", "Media (mar-mer)"], ["Bassa", "Bassa (gio-ven)"]], b.deperibilita)}</select></label>
+      <span></span>
+      <label>Minuti attivi <input name="tempoPrep" type="number" min="1" inputmode="numeric" value="${esc(b.tempoPrep)}"></label>
+      <label>Minuti totali <input name="tempoTotale" type="number" min="1" inputmode="numeric" value="${esc(b.tempoTotale)}"></label>
+    </div>
+    <fieldset class="stagioni"><legend>Stagioni</legend>
+      ${STAGIONI.map((st) => `<label class="spunta"><input type="checkbox" name="stagione" value="${st}" ${b.stagioni.includes(st) ? "checked" : ""}> ${st}</label>`).join("")}
+    </fieldset>
+    <h3>Ingredienti per 1 porzione</h3>
+    <div class="ingr-editor">${b.ingredienti.map((i, n) => {
+      const a = S.alimentiPerId.get(i.id);
+      return `<div class="ingr-riga">
+        <select name="ingr-id" data-i="${n}"><option value="">— scegli —</option>${alimenti.map((x) =>
+          `<option value="${x.id}" ${x.id === i.id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
+        <input name="ingr-q" data-i="${n}" type="number" min="0" step="any" inputmode="decimal" value="${esc(i.q)}" placeholder="qtà">
+        <span class="unita">${a ? NOMI_UNITA[a.unita] || a.unita : ""}</span>
+        <button type="button" class="btn-ico piccolo" data-azione="ed-togli-ingr" data-i="${n}" aria-label="Togli">✕</button>
+      </div>`;
+    }).join("")}</div>
+    <div class="azioni-riga">
+      <button type="button" class="btn piccolo" data-azione="ed-agg-ingr">+ Ingrediente</button>
+      <button type="button" class="btn piccolo" data-azione="ed-nuovo-alimento">+ Alimento che non c'è</button>
+    </div>
+    ${b.nuovoAlimento ? `<div class="nuovo-alimento">
+      <label>Nome alimento <input name="na-nome" placeholder="es. Ceci neri"></label>
+      <div class="griglia-2">
+        <label>Reparto <select name="na-reparto">${REPARTI.map((r) => `<option value="${r.id}">${r.nome}</option>`).join("")}</select></label>
+        <label>Unità <select name="na-unita"><option value="g">grammi</option><option value="ml">millilitri</option><option value="pz">pezzi</option></select></label>
+        <label>Tipo <select name="na-tipo"><option value="fresco">fresco (da comprare)</option><option value="dispensa">dispensa</option></select></label>
+      </div>
+      <button type="button" class="btn piccolo primario" data-azione="ed-salva-alimento">Aggiungi alimento</button>
+    </div>` : ""}
+    <label>Procedimento (un passo per riga)
+      <textarea name="procedimento" rows="6" placeholder="Lessa la pasta.&#10;Intanto...">${esc(b.procedimento.join("\n"))}</textarea></label>
+    <label>Contorno o note (facoltativo) <input name="contorno" value="${esc(b.contorno)}"></label>
+    <label>Link (facoltativo) <input name="link" type="url" value="${esc(b.link)}" placeholder="https://…"></label>
+  </form>
+  ${orig ? `<div class="lista-azioni">
+    ${orig.nascosta
+      ? `<button class="btn largo" data-azione="ed-mostra" data-id="${orig.id}">👁️ Torna a proporla nel menù</button>`
+      : `<button class="btn largo" data-azione="ed-nascondi" data-id="${orig.id}">🙈 Non proporla più nel menù</button>`}
+    ${orig.modificata ? `<button class="btn largo" data-azione="ed-ripristina" data-id="${orig.id}">↺ Torna alla versione originale</button>` : ""}
+    ${orig.mia ? `<button class="btn largo pericolo" data-azione="ed-elimina" data-id="${orig.id}">🗑️ Elimina la ricetta</button>` : ""}
+  </div>` : ""}
+  <div class="azioni-modale">
+    <button class="btn" data-azione="chiudi">Annulla</button>
+    <button class="btn primario" data-azione="ed-salva">Salva</button>
+  </div>`);
+}
+
+function leggiEditor() {
+  const f = document.getElementById("editor");
+  if (!f || !S.bozza) return;
+  const b = S.bozza;
+  const v = (n) => f.elements[n]?.value ?? "";
+  b.nome = v("nome").trim();
+  if (!b.id) b.pasto = v("pasto");
+  b.proteina = v("proteina");
+  b.deperibilita = v("deperibilita");
+  b.tempoPrep = v("tempoPrep");
+  b.tempoTotale = v("tempoTotale");
+  b.stagioni = [...f.querySelectorAll('input[name="stagione"]:checked')].map((x) => x.value);
+  b.ingredienti = [...f.querySelectorAll('select[name="ingr-id"]')].map((sel) => ({
+    id: sel.value, q: f.querySelector(`input[name="ingr-q"][data-i="${sel.dataset.i}"]`).value,
+  }));
+  b.procedimento = v("procedimento").split("\n").map((x) => x.trim()).filter(Boolean);
+  b.contorno = v("contorno").trim();
+  b.link = v("link").trim();
+  if (b.nuovoAlimento) b.na = { nome: v("na-nome").trim(), reparto: v("na-reparto"), unita: v("na-unita"), tipo: v("na-tipo") };
+}
+
+function salvaEditor() {
+  leggiEditor();
+  const b = S.bozza;
+  const ingr = b.ingredienti.filter((i) => i.id && Number(i.q) > 0).map((i) => ({ id: i.id, q: Number(i.q) }));
+  const prep = Number(b.tempoPrep), tot = Number(b.tempoTotale);
+  if (!b.nome) return avviso("Scrivi il nome della ricetta");
+  if (!ingr.length) return avviso("Aggiungi almeno un ingrediente con la quantità");
+  if (!b.stagioni.length) return avviso("Scegli almeno una stagione");
+  if (!(prep > 0) || !(tot >= prep)) return avviso("Controlla i tempi: il totale non può essere minore dei minuti attivi");
+  const id = b.id || nuovoIdRicetta(b.pasto);
+  const ricetta = {
+    nome: b.nome, pasto: b.pasto, proteina: b.proteina, deperibilita: b.deperibilita,
+    stagioni: STAGIONI.filter((s) => b.stagioni.includes(s)), tempoPrep: prep, tempoTotale: tot,
+    ingredienti: ingr, procedimento: b.procedimento,
+  };
+  if (b.contorno) ricetta.contorno = b.contorno;
+  if (b.link) ricetta.link = b.link;
+  archivio.scrivi("ricetteUtente", id, { ricetta, quando: Date.now() });
+  S.bozza = null;
+  chiudiModale();
+  const r = { ...ricetta, id };
+  avviso(entroTempi(r, imp()) ? "Ricetta salvata" : "Ricetta salvata, ma supera i limiti di tempo: non verrà proposta nel menù", 4000);
+}
+
+function salvaNuovoAlimento() {
+  leggiEditor();
+  const na = S.bozza.na;
+  if (!na?.nome) return avviso("Scrivi il nome dell'alimento");
+  if (S.alimenti.some((a) => a.nome.toLowerCase() === na.nome.toLowerCase())) return avviso("Questo alimento c'è già nell'elenco");
+  const id = nuovoIdAlimento();
+  const a = { nome: na.nome, reparto: na.reparto, tipo: na.tipo, unita: na.unita };
+  archivio.scrivi("alimentiUtente", id, a);
+  // subito disponibile nella bozza, anche prima che arrivi la sincronizzazione
+  S.alimentiUtente = { ...S.alimentiUtente, [id]: a };
+  ricalcolaDati();
+  const vuota = S.bozza.ingredienti.find((i) => !i.id);
+  if (vuota) vuota.id = id; else S.bozza.ingredienti.push({ id, q: "" });
+  S.bozza.nuovoAlimento = false;
+  disegnaEditor();
+  avviso(`Aggiunto "${na.nome}"`);
 }
 
 function cambia(k) {
@@ -342,6 +634,8 @@ function vediRicetta(id, k) {
   }).join("");
   const fuori = !entroTempi(r, imp());
   apriModale(`<h2>${esc(r.nome)}</h2>
+    ${r.nascosta ? `<p class="nota avvertenza">Questa ricetta non viene più proposta nel menù.</p>` : ""}
+    ${r.mia ? `<p class="nota">Ricetta aggiunta da voi.</p>` : r.modificata ? `<p class="nota">Ricetta modificata da voi.</p>` : ""}
     <div class="chip-riga">
       <span class="chip">${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)}</span>
       <span class="chip">⏱️ ${r.tempoPrep} min attivi · ${r.tempoTotale} min totali</span>
@@ -355,7 +649,10 @@ function vediRicetta(id, k) {
     ${r.procedimento?.length ? `<h3>Procedimento</h3>
     <ol class="procedimento">${r.procedimento.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>` : ""}
     ${r.link ? `<p><a href="${esc(r.link)}" target="_blank" rel="noopener">Apri la ricetta online ↗</a></p>` : ""}
-    <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
+    <div class="azioni-modale">
+      <button class="btn" data-azione="modifica-ricetta" data-id="${r.id}">✏️ Modifica</button>
+      <button class="btn" data-azione="chiudi">Chiudi</button>
+    </div>`);
 }
 
 // ---------------------------------------------------------------- spesa
@@ -423,7 +720,8 @@ function vistaSpesa() {
 // ---------------------------------------------------------------- ricette
 function vistaRicette() {
   const filtri = [["tutti", "Tutte"], ["pranzo", "Pranzi"], ["cena", "Cene"]];
-  return `<input type="search" id="cerca-ricette" placeholder="Cerca una ricetta o un ingrediente…" value="${esc(S.cercaRicetta)}">
+  return `<button class="btn primario largo centro-testo" data-azione="nuova-ricetta">+ Nuova ricetta</button>
+    <input type="search" id="cerca-ricette" placeholder="Cerca una ricetta o un ingrediente…" value="${esc(S.cercaRicetta)}">
     <div class="chip-riga">${filtri.map(([v, t]) =>
       `<button class="chip ${S.filtroPasto === v ? "attivo" : ""}" data-azione="filtro-pasto" data-valore="${v}">${t}</button>`).join("")}</div>
     <div id="lista-ricette"></div>`;
@@ -433,12 +731,13 @@ function disegnaListaRicette() {
   const el = document.getElementById("lista-ricette");
   if (!el) return;
   const f = S.cercaRicetta.toLowerCase().trim();
-  const elenco = S.ricette.filter((r) => (S.filtroPasto === "tutti" || r.pasto === S.filtroPasto)
+  const elenco = S.tutteRicette.filter((r) => (S.filtroPasto === "tutti" || r.pasto === S.filtroPasto)
     && (!f || r.nome.toLowerCase().includes(f)
       || r.ingredienti.some((i) => S.alimentiPerId.get(i.id)?.nome.toLowerCase().includes(f))));
+  elenco.sort((a, b) => (a.nascosta ? 1 : 0) - (b.nascosta ? 1 : 0));
   el.innerHTML = `<p class="nota">${elenco.length} ricette</p>` + elenco.map((r) => `
-    <button class="riga-ricetta ${entroTempi(r, imp()) ? "" : "sconsigliata"}" data-azione="vedi-ricetta" data-id="${r.id}">
-      <span>${PASTO[r.pasto].ico} ${esc(r.nome)}</span>
+    <button class="riga-ricetta ${entroTempi(r, imp()) && !r.nascosta ? "" : "sconsigliata"}" data-azione="vedi-ricetta" data-id="${r.id}">
+      <span>${PASTO[r.pasto].ico} ${esc(r.nome)}${r.nascosta ? ' <small class="etichetta">non proposta</small>' : r.mia ? ' <small class="etichetta">vostra</small>' : r.modificata ? ' <small class="etichetta">modificata</small>' : ""}</span>
       <small>${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoPrep}/${r.tempoTotale} min · ${r.stagioni.length === 4 ? "tutto l'anno" : r.stagioni.join(", ")}</small>
     </button>`).join("");
 }
@@ -499,7 +798,7 @@ function vistaAltro() {
       <button class="btn primario">Salva</button>
     </form>
   </section>
-  <p class="nota centro">Mi-Piatti v4 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+  <p class="nota centro">Mi-Piatti v5 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
 }
 
 // ---------------------------------------------------------------- modale
@@ -557,6 +856,23 @@ document.addEventListener("click", async (e) => {
     case "annulla-scambio": S.scambio = null; disegna(); break;
     case "svuota": archivio.elimina("pasti", chiave); chiudiModale(); break;
     case "vedi-ricetta": vediRicetta(id, chiave); break;
+    case "nuova-ricetta": apriEditor(null); break;
+    case "modifica-ricetta": apriEditor(id); break;
+    case "ed-agg-ingr": leggiEditor(); S.bozza.ingredienti.push({ id: "", q: "" }); disegnaEditor(); break;
+    case "ed-togli-ingr": leggiEditor(); S.bozza.ingredienti.splice(Number(el.dataset.i), 1); disegnaEditor(); break;
+    case "ed-nuovo-alimento": leggiEditor(); S.bozza.nuovoAlimento = !S.bozza.nuovoAlimento; disegnaEditor(); break;
+    case "ed-salva-alimento": salvaNuovoAlimento(); break;
+    case "ed-salva": salvaEditor(); break;
+    case "ed-nascondi":
+      archivio.scrivi("ricetteUtente", id, { nascosta: true }); chiudiModale(); avviso("Non verrà più proposta nel menù"); break;
+    case "ed-mostra":
+      archivio.scrivi("ricetteUtente", id, { nascosta: false }); chiudiModale(); avviso("Verrà di nuovo proposta nel menù"); break;
+    case "ed-ripristina":
+      if (S.ricetteUtente[id]?.nascosta) archivio.scriviMolti([{ coll: "ricetteUtente", id, dati: null }, { coll: "ricetteUtente", id, dati: { nascosta: true } }]);
+      else archivio.elimina("ricetteUtente", id);
+      chiudiModale(); avviso("Ripristinata la versione originale"); break;
+    case "ed-elimina":
+      archivio.elimina("ricetteUtente", id); chiudiModale(); avviso("Ricetta eliminata"); break;
     case "chiudi": chiudiModale(); break;
     case "vai-menu": S.scheda = "menu"; disegna(); break;
     case "filtro-pasto": S.filtroPasto = el.dataset.valore; disegna(); break;
@@ -588,6 +904,10 @@ document.addEventListener("change", (e) => {
     if (el.dataset.extra) archivio.scrivi("extra", el.dataset.chiave, { fatto: el.checked });
     else if (el.checked) archivio.scrivi("spunte", el.dataset.chiave, { fatto: true, quando: Date.now() });
     else archivio.elimina("spunte", el.dataset.chiave);
+  } else if (el.name === "ingr-id") {
+    const a = S.alimentiPerId.get(el.value);
+    const u = el.parentElement.querySelector(".unita");
+    if (u) u.textContent = a ? NOMI_UNITA[a.unita] || a.unita : "";
   } else if (el.dataset.azione === "dispensa") {
     S.mostraDispensa = el.checked;
     disegna();
