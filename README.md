@@ -6,7 +6,7 @@ App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena
 
 - **Menù**: genera da 1 a 4 settimane rispettando stagione, deperibilità (Alta sab-lun, Media mar-mer, Bassa gio-ven), massimo 2 ripetizioni per ricetta, proteine diverse tra pranzo e cena e le regole settimanali (pesce e legumi almeno 2 volte, carne rossa al massimo 2). Ogni pasto si può cambiare, scegliere dall'elenco o scambiare con un altro giorno. Tenendo premuto il simbolo ☰ a sinistra di un pasto lo si sblocca e lo si trascina su un altro pasto (pranzo su pranzo, cena su cena) con lo stesso livello di deperibilità; gli altri pasti restano attenuati e non accettano lo spostamento. Toccando il moltiplicatore (×1 / ×2,5) a destra di un pasto si cambiano le porzioni solo di quel pasto, e la spesa si aggiorna.
 - **Porzioni**: pranzo feriale ×1 (solo la compagna), cene, weekend, festività nazionali, ferie e mensa chiusa ×2,5. Le festività (Pasqua compresa) sono calcolate in automatico; ferie e chiusure della mensa si inseriscono in *Altro*.
-- **Spesa**: somma gli ingredienti della settimana, con quantità, confezioni e giorni in cui servono. Ordine reparti: verdure, frutta, banco frigo, pasta, conserve, salumi e formaggi, congelati, bevande, pane. Il pesce dei pasti da martedì a venerdì diventa la versione surgelata. Spunte condivise, voci libere (es. colazione e merenda, da aggiungere a mano), pulsante "Copia come testo" con caselle `[ ]`.
+- **Spesa**: somma gli ingredienti della settimana, con quantità, confezioni e giorni in cui servono. Ordine reparti: verdure, frutta, banco frigo, pasta, conserve, salumi e formaggi, congelati, bevande, pane. Il pesce dei pasti da martedì a venerdì diventa la versione surgelata. Spunte condivise; spuntando un prodotto si può scrivere quanto lo si è pagato (facoltativo, "Salta"): accanto alla voce compaiono prezzo al kg, al litro o al pezzo, media e andamento (↑ ↓ =), e toccandoli lo storico. Si registra solo il costo, non il negozio. Voci libere (es. colazione e merenda, da aggiungere a mano), pulsante "Copia come testo" con caselle `[ ]`.
 - **Ricette**: 150 ricette (73 pranzi, 77 cene), dosi per una porzione, con tempi di preparazione attiva e totale e il procedimento passo per passo. Quelle oltre 30 min attivi o 60 totali restano visibili ma non vengono proposte. Dalla scheda *Ricette* si aggiungono ricette nuove (e, se serve, alimenti nuovi), si modificano quelle esistenti o si smette di proporle; le modifiche sono condivise tra i due telefoni.
 
 ## Pubblicare l'app (GitHub Pages)
@@ -56,6 +56,7 @@ node --test test/*.test.mjs   # test della logica (menù, festività, spesa, spo
 | `js/calendario.js` | settimane sab-ven, festività, stagioni, deperibilità, porzioni |
 | `js/pianificatore.js` | generazione e sostituzione dei pasti |
 | `js/spesa.js` | lista della spesa e testo da copiare |
+| `js/prezzi.js` | prezzi pagati: prezzo unitario, media, andamento |
 | `js/archivio.js` | Firebase (Firestore + Google) oppure solo locale |
 | `js/app.js` | interfaccia |
 | `sw.js` | funzionamento offline |
