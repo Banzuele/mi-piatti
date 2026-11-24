@@ -9,7 +9,14 @@
 // Questi valori non sono segreti: i dati sono protetti dalle regole di
 // Firestore (file firestore.rules), che ammettono solo i vostri due account.
 
-export const firebaseConfig = null;
+export const firebaseConfig = {
+  apiKey: "AIzaSyA5BS0UPTRMzggKICGudtMyTQ0eTup8IAQ",
+  authDomain: "mi-piatti.firebaseapp.com",
+  projectId: "mi-piatti",
+  storageBucket: "mi-piatti.firebasestorage.app",
+  messagingSenderId: "1038769438827",
+  appId: "1:1038769438827:web:d217538fed24c345aa712e",
+};
 
 // Esempio di come deve apparire dopo averlo incollato:
 // export const firebaseConfig = {
