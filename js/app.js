@@ -798,7 +798,7 @@ function vistaAltro() {
       <button class="btn primario">Salva</button>
     </form>
   </section>
-  <p class="nota centro">Mi-Piatti v5 · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+  <p class="nota centro">Mi-Piatti ${document.documentElement.dataset.versione || ""} · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
 }
 
 // ---------------------------------------------------------------- modale
