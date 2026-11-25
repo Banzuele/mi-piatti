@@ -24,9 +24,7 @@
       .then(function (reg) {
         if (!reg) return;
         return reg.update().then(function () {
-          stato.textContent = reg.installing || reg.waiting
-            ? "Nuova versione trovata"
-            : "App aggiornata";
+          stato.textContent = reg.installing || reg.waiting ? "Nuova versione trovata" : "";
         });
       })
       .catch(function () { stato.textContent = "Uso la copia salvata"; });

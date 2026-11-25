@@ -157,19 +157,27 @@ async function avvia() {
 }
 
 // ---------------------------------------------------------------- disegno
-function disegnaStato() {
-  const el = document.getElementById("stato-sync");
-  if (archivio.modalita === "locale") el.textContent = "📱 Solo su questo telefono";
-  else if (!S.utente) el.textContent = "";
-  else if (!navigator.onLine) el.textContent = "📴 Offline: salvo e sincronizzo dopo";
-  else el.textContent = S.inAttesa ? "⏳ Sincronizzo…" : "☁️ Sincronizzato";
+// Stato della sincronizzazione: piccola etichetta in cima a ogni pagina
+// (sotto le date della settimana nel Menù e nella Spesa).
+function testoStato() {
+  if (archivio.modalita === "locale") return "📱 Solo su questo telefono";
+  if (!S.utente) return "";
+  if (!navigator.onLine) return "📴 Offline: salvo e sincronizzo dopo";
+  return S.inAttesa ? "⏳ Sincronizzo…" : "☁️ Sincronizzato";
 }
+function disegnaStato() {
+  const t = testoStato();
+  document.querySelectorAll(".stato-sync").forEach((el) => { el.textContent = t; });
+}
+const statoSync = () => `<span class="stato-sync">${esc(testoStato())}</span>`;
 
+const ORDINE_SCHEDE = ["menu", "spesa", "ricette", "altro"];
 function disegna() {
   if (S.trascina) { S.daRidisegnare = true; return; }
-  disegnaStato();
   document.querySelectorAll("#schede button").forEach((b) =>
     b.classList.toggle("attiva", b.dataset.scheda === S.scheda));
+  document.getElementById("schede").style.setProperty("--attiva", String(Math.max(0, ORDINE_SCHEDE.indexOf(S.scheda))));
+  document.body.dataset.scheda = S.scheda;
   if (S.errore) {
     $contenuto.innerHTML = `<div class="scheda-errore">${esc(S.errore)}</div>` + vistaAccesso();
     return;
@@ -182,6 +190,7 @@ function disegna() {
   const viste = { menu: vistaMenu, spesa: vistaSpesa, ricette: vistaRicette, altro: vistaAltro };
   $contenuto.innerHTML = viste[S.scheda]();
   if (S.scheda === "ricette") disegnaListaRicette();
+  disegnaStato();
 }
 
 function vistaAccesso() {
@@ -201,8 +210,11 @@ function navSettimana() {
     : S.settimana === aggiungiGiorni(corrente, -7) ? "Settimana scorsa" : "Settimana";
   return `<div class="nav-sett">
     <button class="btn-ico" data-azione="sett" data-delta="-7" aria-label="Settimana precedente">‹</button>
-    <div class="titolo-sett" data-azione="sett-oggi">
+    <div class="titolo-sett">
       <small>${quale}</small><strong>${intervalloSettimana(S.settimana)}</strong>
+      ${S.settimana !== corrente
+        ? `<button class="torna-oggi" data-azione="sett-oggi">↩ Torna a questa settimana</button>`
+        : statoSync()}
     </div>
     <button class="btn-ico" data-azione="sett" data-delta="7" aria-label="Settimana successiva">›</button>
   </div>`;
@@ -705,11 +717,18 @@ function vociSpesa() {
   }));
   const extra = Object.entries(S.extra)
     .filter(([, e]) => e.settimana === S.settimana)
-    .map(([id, e]) => ({
-      id, chiave: id, extra: true, nome: e.testo, reparto: e.reparto || "altro", tipo: "fresco",
-      prodotto: chiaveProdotto({ nome: e.testo }), unita: "pz", quantita: 1,
-      testoQuantita: "", testoConfezioni: "", testoGiorni: "", fatto: !!e.fatto,
-    }));
+    .map(([id, e]) => {
+      const a = typeof e.alimento === "string" ? S.alimentiPerId.get(e.alimento) : null;
+      const unita = a?.unita || (["g", "ml", "pz"].includes(e.unita) ? e.unita : "pz");
+      const q = Number(e.quantita) > 0 && Number(e.quantita) < 1e6 ? Number(e.quantita) : 0;
+      return {
+        id, chiave: id, extra: true, alimento: a?.id || null,
+        nome: a?.nome || String(e.testo || "").slice(0, LIMITI.nome),
+        reparto: a?.reparto || e.reparto || "altro", tipo: "fresco",
+        prodotto: chiaveProdotto({ alimento: a?.id, nome: e.testo }), unita, quantita: q || (unita === "pz" ? 1 : 0),
+        testoQuantita: q ? formattaQuantita(q, unita) : "", testoConfezioni: "", testoGiorni: "", fatto: !!e.fatto,
+      };
+    });
   const pos = new Map(REPARTI.map((r, i) => [r.id, i]));
   return [...voci, ...extra].sort((a, b) =>
     (pos.get(a.reparto) ?? 99) - (pos.get(b.reparto) ?? 99) || a.nome.localeCompare(b.nome, "it"));
@@ -731,7 +750,7 @@ const FRECCE = { su: ["↑", "più caro"], giu: ["↓", "più economico"], ugual
 // prezzo e media; toccandola si apre il prezzo con lo storico.
 // Stima iniziale dell'alimento (€ al kg / al litro / al pezzo), dai file del repository
 function stimaDi(v) {
-  const s = v.extra ? null : S.alimentiPerId.get(v.id)?.stima;
+  const s = S.alimentiPerId.get(v.extra ? v.alimento : v.id)?.stima;
   return Number(s) > 0 ? Number(s) : null;
 }
 // Quantità che si compra davvero: le confezioni intere se note
@@ -844,12 +863,109 @@ function totaleSpesa(voci) {
   return ` · <b class="totale-spesa" title="${stime} prezzi stimati">≈ ${formattaEuro(tot)}</b>${pagato ? ` <small>(pagati ${formattaEuro(pagato)})</small>` : ""}`;
 }
 
+// ---------------------------------------------------------------- aggiungi alla spesa
+// Finestra del "+": mentre si scrive suggerisce i prodotti già presenti nell'app
+// (con la loro unità); se non c'è, si crea con unità e reparto scelti.
+const NOMI_UNITA_LUNGHI = { g: "grammi", ml: "millilitri", pz: "pezzi" };
+function apriAggiungi() {
+  S.aggiungi = { alimento: null };
+  apriModale(`<h2>Aggiungi alla spesa</h2>
+  <form class="editor" data-azione="aggiungi-extra" autocomplete="off">
+    <label>Prodotto <input id="agg-nome" name="testo" placeholder="es. Yogurt, detersivo…" required maxlength="${LIMITI.nome}"></label>
+    <ul class="suggerimenti" id="agg-sugg"></ul>
+    <div class="griglia-2">
+      <label>Quantità (facoltativa) <input name="quantita" type="number" min="0" step="any" inputmode="decimal" placeholder="es. 500"></label>
+      <label>Unità <select name="unita" id="agg-unita">${["pz", "g", "ml"].map((u) => `<option value="${u}">${NOMI_UNITA_LUNGHI[u]}</option>`).join("")}</select></label>
+    </div>
+    <label id="agg-reparto-l">Reparto <select name="reparto" id="agg-reparto">${REPARTI.map((r) => `<option value="${r.id}" ${r.id === "altro" ? "selected" : ""}>${r.nome}</option>`).join("")}</select></label>
+    <p class="nota" id="agg-info">Scrivi il nome: se il prodotto è già nell'app lo trovi qui sopra.</p>
+    <div class="azioni-modale">
+      <button type="button" class="btn" data-azione="chiudi">Annulla</button>
+      <button class="btn primario">Aggiungi</button>
+    </div>
+  </form>`);
+  setTimeout(() => document.getElementById("agg-nome")?.focus(), 50);
+}
+
+const normalizza = (t) => String(t || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function aggiornaSuggerimenti() {
+  const inp = document.getElementById("agg-nome");
+  const ul = document.getElementById("agg-sugg");
+  if (!inp || !ul) return;
+  const q = normalizza(inp.value);
+  const scelto = S.aggiungi?.alimento && S.alimentiPerId.get(S.aggiungi.alimento);
+  if (scelto && normalizza(scelto.nome) !== q) scegliProdotto(null);
+  if (q.length < 2 || (scelto && normalizza(scelto.nome) === q)) { ul.innerHTML = ""; return; }
+  const trovati = S.alimenti
+    .map((a) => ({ a, n: normalizza(a.nome) }))
+    .filter(({ n }) => n.includes(q))
+    .sort((x, y) => (y.n.startsWith(q) - x.n.startsWith(q)) || x.n.localeCompare(y.n))
+    .slice(0, 6);
+  ul.innerHTML = trovati.map(({ a }) => `<li><button type="button" data-azione="scegli-prodotto" data-id="${esc(a.id)}">
+      ${esc(a.nome)} <small>${NOMI_UNITA_LUNGHI[a.unita] || a.unita} · ${esc(REPARTI.find((r) => r.id === a.reparto)?.nome || "")}</small></button></li>`).join("")
+    + (trovati.some(({ n }) => n === q) ? "" : `<li class="nuovo">➕ Nuovo prodotto "${esc(inp.value.trim())}": scegli unità e reparto qui sotto</li>`);
+}
+
+function scegliProdotto(id) {
+  const a = id ? S.alimentiPerId.get(id) : null;
+  S.aggiungi = { alimento: a?.id || null };
+  const unita = document.getElementById("agg-unita");
+  const reparto = document.getElementById("agg-reparto");
+  const info = document.getElementById("agg-info");
+  if (!unita) return;
+  unita.disabled = !!a;
+  reparto.disabled = !!a;
+  if (a) {
+    document.getElementById("agg-nome").value = a.nome;
+    unita.value = a.unita;
+    reparto.value = a.reparto || "altro";
+    info.textContent = `Unità: ${NOMI_UNITA_LUNGHI[a.unita] || a.unita}${a.stima ? ` · stima ${formattaUnitario({ valore: a.stima, unita: UNITA_PREZZO[a.unita] })}` : ""}`;
+    document.getElementById("agg-sugg").innerHTML = "";
+  } else {
+    info.textContent = "Prodotto nuovo: scegli unità e reparto.";
+  }
+}
+
+function salvaAggiungi(dati) {
+  const nome = String(dati.testo || "").trim().slice(0, LIMITI.nome);
+  if (!nome) return avviso("Scrivi il nome del prodotto");
+  let id = S.aggiungi?.alimento || null;
+  if (!id) {
+    // già nell'app con lo stesso nome? altrimenti lo si aggiunge agli alimenti
+    const uguale = S.alimenti.find((a) => normalizza(a.nome) === normalizza(nome));
+    if (uguale) id = uguale.id;
+    else {
+      id = nuovoIdAlimento();
+      const unita = ["g", "ml", "pz"].includes(dati.unita) ? dati.unita : "pz";
+      const reparto = REPARTI.some((r) => r.id === dati.reparto) ? dati.reparto : "altro";
+      const a = { nome, reparto, tipo: "fresco", unita };
+      archivio.scrivi("alimentiUtente", id, a);
+      S.alimentiUtente = { ...S.alimentiUtente, [id]: a };
+      ricalcolaDati();
+    }
+  }
+  const a = S.alimentiPerId.get(id);
+  const q = Number(dati.quantita);
+  archivio.scrivi("extra", idCasuale(), {
+    settimana: S.settimana, testo: a.nome, alimento: id, reparto: a.reparto || "altro", unita: a.unita,
+    ...(q > 0 && q < 1e6 ? { quantita: q } : {}), fatto: false,
+  });
+  S.aggiungi = null;
+  chiudiModale();
+  avviso(`Aggiunto: ${a.nome}`);
+}
+
 function vistaSpesa() {
   let h = navSettimana();
   const tutte = vociSpesa();
   const voci = tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra);
   const presi = voci.filter((v) => v.fatto).length;
-  h += `<div class="barra-spesa">
+  h += `<div class="azioni-spesa">
+    <button class="btn piccolo" data-azione="copia-spesa">📋 Copia come testo</button>
+    <button class="btn piccolo" data-azione="azzera-spunte">↺ Togli le spunte</button>
+  </div>
+  <div class="barra-spesa">
     <span>${presi}/${voci.length} presi${totaleSpesa(voci)}</span>
     <label class="interruttore"><input type="checkbox" data-azione="dispensa" ${S.mostraDispensa ? "checked" : ""}> Mostra dispensa</label>
   </div>`;
@@ -877,15 +993,7 @@ function vistaSpesa() {
     </li>`;
   }
   if (reparto !== null) h += `</ul>`;
-  h += `<form class="aggiungi" data-azione="aggiungi-extra">
-    <input name="testo" placeholder="Aggiungi altro (es. detersivo)" autocomplete="off" required>
-    <select name="reparto">${REPARTI.map((r) => `<option value="${r.id}" ${r.id === "altro" ? "selected" : ""}>${r.nome}</option>`).join("")}</select>
-    <button class="btn primario">+</button>
-  </form>
-  <div class="azioni-riga">
-    <button class="btn" data-azione="copia-spesa">📋 Copia come testo</button>
-    <button class="btn" data-azione="azzera-spunte">↺ Togli le spunte</button>
-  </div>
+  h += `<button class="fab" data-azione="apri-aggiungi" aria-label="Aggiungi un prodotto alla spesa">+</button>
   <p class="nota">Il pesce dei pasti da martedì a venerdì è già nella versione surgelata.</p>`;
   return h;
 }
@@ -893,7 +1001,8 @@ function vistaSpesa() {
 // ---------------------------------------------------------------- ricette
 function vistaRicette() {
   const filtri = [["tutti", "Tutte"], ["pranzo", "Pranzi"], ["cena", "Cene"]];
-  return `<button class="btn primario largo centro-testo" data-azione="nuova-ricetta">+ Nuova ricetta</button>
+  return `<div class="riga-stato">${statoSync()}</div>
+    <button class="btn primario largo centro-testo" data-azione="nuova-ricetta">+ Nuova ricetta</button>
     <input type="search" id="cerca-ricette" placeholder="Cerca una ricetta o un ingrediente…" value="${esc(S.cercaRicetta)}">
     <div class="chip-riga">${filtri.map(([v, t]) =>
       `<button class="chip ${S.filtroPasto === v ? "attivo" : ""}" data-azione="filtro-pasto" data-valore="${v}">${t}</button>`).join("")}</div>
@@ -931,7 +1040,7 @@ function vistaAltro() {
   const oggi = oggiISO();
   const nomeTipo = { ferie: "Ferie", mensa: "Mensa chiusa", altro: "A casa" };
   const feste = [...festivita(anno), ...festivita(anno + 1)].filter((f) => f.data >= oggi).slice(0, 8);
-  return `
+  return `<div class="riga-stato">${statoSync()}</div>
   <section class="pannello">
     <h2>Account</h2>
     ${archivio.modalita === "locale"
@@ -1054,6 +1163,8 @@ document.addEventListener("click", async (e) => {
       archivio.scriviMolti(el.dataset.giorni.split(",").map((d) => ({ coll: "giorniCasa", id: d, dati: null })));
       break;
     case "apri-prezzo": e.preventDefault(); apriPrezzo(chiave); break;
+    case "apri-aggiungi": apriAggiungi(); break;
+    case "scegli-prodotto": scegliProdotto(id); break;
     case "togli-prezzo": archivio.elimina("prezzi", chiave); S.prezzoAperto = null; chiudiModale(); avviso("Prezzo tolto"); break;
     case "copia-spesa": {
       const voci = vociSpesa().filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra);
@@ -1095,6 +1206,7 @@ document.addEventListener("change", (e) => {
 
 document.addEventListener("input", (e) => {
   if (e.target.id === "prezzo-valore" || e.target.id === "prezzo-q") aggiornaAnteprimaPrezzo();
+  if (e.target.id === "agg-nome") aggiornaSuggerimenti();
   if (e.target.id === "cerca-ricette") {
     S.cercaRicetta = e.target.value;
     disegnaListaRicette();
@@ -1108,8 +1220,8 @@ document.addEventListener("submit", (e) => {
   if (f.dataset.azione === "salva-prezzo") {
     salvaPrezzo(dati);
   } else if (f.dataset.azione === "aggiungi-extra") {
-    if (!dati.testo.trim()) return;
-    archivio.scrivi("extra", idCasuale(), { settimana: S.settimana, testo: dati.testo.trim(), reparto: dati.reparto, fatto: false });
+    // i campi disattivati (unità e reparto di un prodotto già noto) non sono in FormData
+    salvaAggiungi(dati);
   } else if (f.dataset.azione === "aggiungi-casa") {
     const dal = dati.dal, al = dati.al && dati.al >= dal ? dati.al : dal;
     const ops = [];
