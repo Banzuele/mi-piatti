@@ -12,6 +12,10 @@
   --media: #c98a12;
   --bassa: #3b7d5a;
   --raggio: 14px;
+  /* barra inferiore: verde pieno, così si stacca dallo sfondo color crema */
+  --barra: #2f6b4f;
+  --barra-ico: rgba(255, 255, 255, .68);
+  --barra-attiva: #ffffff;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -25,6 +29,9 @@
     --primario-testo: #0d1a13;
     --accento: #1f3329;
     --pericolo: #f2867d;
+    --barra: #2b5a44;
+    --barra-ico: rgba(231, 236, 233, .62);
+    --barra-attiva: #ffffff;
     color-scheme: dark;
   }
 }
@@ -54,36 +61,40 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--primario); color: var(--primario-testo); font-size: 12px; font-weight: 600; cursor: pointer;
 }
 
-/* barra inferiore: sfondo con incavo curvo sotto la scheda attiva e bolla rialzata */
+/* barra inferiore: un'unica forma verde; sotto la scheda attiva la barra si
+   alza in una gobba rotonda (cerchio e barra senza linee di separazione).
+   L'ombra è sul gruppo intero, così segue il contorno unico. */
 .schede {
   --x: calc((var(--attiva) + .5) * 25%);
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding-bottom: env(safe-area-inset-bottom);
   transition: --attiva .38s cubic-bezier(.4, 1.3, .5, 1);
-  filter: drop-shadow(0 -2px 10px rgba(0, 0, 0, .1));
+  filter: drop-shadow(0 -2px 8px rgba(0, 0, 0, .18));
 }
-.schede-sfondo {
-  position: absolute; inset: 0; background: var(--carta); border-radius: 18px 18px 0 0;
-  -webkit-mask: radial-gradient(circle at var(--x) 0, transparent 37px, #000 38px);
-  mask: radial-gradient(circle at var(--x) 0, transparent 37px, #000 38px);
-}
+.schede-sfondo { position: absolute; inset: 0; background: var(--barra); border-radius: 20px 20px 0 0; }
 .schede-bolla {
-  position: absolute; top: -28px; left: calc(var(--x) - 28px); width: 56px; height: 56px;
-  border-radius: 50%; background: var(--carta); border: 1.5px solid var(--primario);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+  position: absolute; top: -26px; left: calc(var(--x) - 31px); width: 62px; height: 62px;
+  border-radius: 50%; background: var(--barra);
 }
+/* raccordi curvi tra la gobba e il bordo della barra */
+.schede-bolla::before, .schede-bolla::after {
+  content: ""; position: absolute; top: 16px; width: 14px; height: 10px;
+}
+.schede-bolla::before { right: calc(100% - 3px); background: radial-gradient(circle at 0 0, transparent 9.5px, var(--barra) 10px); }
+.schede-bolla::after { left: calc(100% - 3px); background: radial-gradient(circle at 100% 0, transparent 9.5px, var(--barra) 10px); }
 .schede button {
   position: relative; border: 0; background: none; padding: 12px 0 10px; min-height: 64px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
-  color: var(--tenue); -webkit-tap-highlight-color: transparent;
+  color: var(--barra-ico); -webkit-tap-highlight-color: transparent;
 }
 .schede .ico { display: block; width: 26px; height: 26px; transition: transform .38s cubic-bezier(.4, 1.3, .5, 1), color .2s; }
 .schede .ico svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .schede .etich { font-size: 11px; letter-spacing: .02em; transition: transform .38s, color .2s; }
-.schede button.attiva { color: var(--primario); }
-.schede button.attiva .ico { transform: translateY(-25px); }
-.schede button.attiva .etich { font-weight: 700; transform: translateY(8px); }
+.schede button.attiva { color: var(--barra-attiva); }
+.schede button.attiva .ico { transform: translateY(-22px) scale(1.12); }
+.schede button.attiva .ico svg { stroke-width: 1.9; }
+.schede button.attiva .etich { font-weight: 700; transform: translateY(6px); }
 
 /* tasto "+" della spesa */
 .fab {
@@ -198,6 +209,11 @@ input[type=search] { margin-bottom: 10px; }
 .chip { border: 1px solid var(--bordo); background: var(--carta); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
 button.chip { min-height: 36px; cursor: pointer; }
 .chip.attivo { background: var(--primario); color: var(--primario-testo); border-color: var(--primario); }
+/* filtri stagioni: una riga che scorre di lato sul telefono */
+.chip-riga.scorre { flex-wrap: nowrap; overflow-x: auto; margin-top: -4px; padding-bottom: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.chip-riga.scorre::-webkit-scrollbar { display: none; }
+.chip-riga.scorre .chip { flex: none; white-space: nowrap; }
+.chip .ora { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; opacity: .75; margin-left: 2px; }
 .riga-ricetta {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%;
   border: 1px solid var(--bordo); background: var(--carta); border-radius: 10px;
@@ -319,6 +335,7 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
   transition: opacity .35s ease, visibility .35s;
 }
 .intro.chiusa { opacity: 0; visibility: hidden; pointer-events: none; }
+.ricaricata .intro { display: none; }
 .intro-icona { width: 160px; height: 160px; border-radius: 35px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
 .intro .piatto {
   transform-box: fill-box; transform-origin: center;
@@ -365,3 +382,26 @@ button.link {
 }
 /* niente evidenziazione grigia al tocco */
 button, a, [data-azione] { -webkit-tap-highlight-color: transparent; }
+
+/* trascina giù per aggiornare: freccia che scende dall'alto e poi gira */
+html, body { overscroll-behavior-y: none; }
+.tira {
+  --d: 0px; --r: 0deg; --o: 0;
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) - 44px); z-index: 8;
+  width: 40px; height: 40px; margin-left: -20px; border-radius: 50%;
+  display: grid; place-items: center; pointer-events: none;
+  background: var(--carta); color: var(--primario); box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+  transform: translateY(var(--d)); opacity: var(--o, 0);
+  transition: transform .2s, opacity .2s;
+}
+.tira svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transform: rotate(var(--r)); }
+.tira:not(.pronta) svg { opacity: .55; }
+.tira.gira svg { animation: gira .8s linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+/* rotellina al posto della nuvola mentre l'app si aggiorna */
+.stato-sync.carica { color: var(--primario); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.stato-sync.carica::before {
+  content: ""; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent; animation: gira .8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .tira.gira svg, .stato-sync.carica::before { animation-duration: 2s; } }

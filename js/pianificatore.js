@@ -1,4 +1,4 @@
-// Generazione del menù: 4 settimane da sabato a venerdì, pranzo e cena.
+// Generazione del menù: 4 settimane dal giorno della spesa (di solito sabato), pranzo e cena.
 // Funzioni pure, senza DOM, così si possono testare con node.
 
 import {
@@ -57,14 +57,15 @@ export function scegliRicetta({
   imp = IMPOSTAZIONI_PREDEFINITE, rng = Math.random, escludi = [],
 }) {
   const st = stagione(data);
-  const dep = deperibilitaGiorno(data);
+  const g = imp.giornoSpesa ?? 6;
+  const dep = deperibilitaGiorno(data, g);
   const altro = ricettePerId.get(piano[chiavePasto(data, pasto === "pranzo" ? "cena" : "pranzo")]);
   const ieri = ricettePerId.get(piano[chiavePasto(aggiungiGiorni(data, -1), pasto)]);
   const usi = contaUsi(piano);
   const attuale = piano[chiavePasto(data, pasto)];
   if (attuale) usi.set(attuale, (usi.get(attuale) || 1) - 1);
   const sett = contaSettimana(
-    { ...piano, [chiavePasto(data, pasto)]: undefined }, ricettePerId, inizioSettimana(data));
+    { ...piano, [chiavePasto(data, pasto)]: undefined }, ricettePerId, inizioSettimana(data, g));
 
   const base = ricette.filter((r) => r.pasto === pasto && entroTempi(r, imp) && !escludi.includes(r.id));
   const livelli = [

@@ -29,11 +29,29 @@ export function giornoSettimana(iso) {
   return daISO(iso).getUTCDay(); // 0 = domenica
 }
 
-// Sabato che apre la settimana di spesa (sab-ven) che contiene la data
-export function inizioSettimana(iso) {
-  const gs = giornoSettimana(iso);
-  const indietro = (gs + 1) % 7; // sab -> 0, dom -> 1, ... ven -> 6
-  return aggiungiGiorni(iso, -indietro);
+// Giorno in cui si fa la spesa e parte il menù (0 = domenica ... 6 = sabato).
+// Di solito sabato; si cambia in Altro > Impostazioni.
+let giornoInizio = 6;
+export function impostaGiornoInizio(g) {
+  const n = Number(g);
+  giornoInizio = Number.isInteger(n) && n >= 0 && n <= 6 ? n : 6;
+}
+export const leggiGiornoInizio = () => giornoInizio;
+
+// Quanti giorni sono passati dal giorno della spesa (0..6)
+export function giornoDellaSettimanaSpesa(iso, inizio = giornoInizio) {
+  return (giornoSettimana(iso) - inizio + 7) % 7;
+}
+
+// Primo giorno (di solito sabato) della settimana di spesa che contiene la data
+export function inizioSettimana(iso, inizio = giornoInizio) {
+  return aggiungiGiorni(iso, -giornoDellaSettimanaSpesa(iso, inizio));
+}
+
+// Nomi brevi dei giorni a partire da un certo numero di giorni dalla spesa,
+// es. con la spesa il sabato: intervalloGiorni(0, 2) = "sab-lun"
+export function intervalloGiorni(da, a, inizio = giornoInizio) {
+  return `${GIORNI[(inizio + da) % 7]}-${GIORNI[(inizio + a) % 7]}`;
 }
 
 export function giorniSettimana(sabato) {
@@ -103,18 +121,19 @@ export function stagione(iso) {
   return "inverno";
 }
 
-// Deperibilità ammessa nel giorno, con la spesa principale il sabato:
-// Alta sab-dom-lun, Media mar-mer, Bassa gio-ven
-export function deperibilitaGiorno(iso) {
-  const gs = giornoSettimana(iso);
-  if (gs === 6 || gs === 0 || gs === 1) return "Alta";
-  if (gs === 2 || gs === 3) return "Media";
+// Deperibilità ammessa nel giorno, contando dal giorno della spesa:
+// Alta i primi 3 giorni, Media i 2 dopo, Bassa gli ultimi 2
+// (con la spesa il sabato: Alta sab-dom-lun, Media mar-mer, Bassa gio-ven)
+export function deperibilitaGiorno(iso, inizio = giornoInizio) {
+  const n = giornoDellaSettimanaSpesa(iso, inizio);
+  if (n <= 2) return "Alta";
+  if (n <= 4) return "Media";
   return "Bassa";
 }
 
-// Il pesce fresco comprato sabato si usa fino a lunedì; poi si usa il surgelato
-export function usaSurgelato(iso) {
-  return deperibilitaGiorno(iso) !== "Alta";
+// Il pesce fresco comprato il giorno della spesa si usa per 3 giorni; poi il surgelato
+export function usaSurgelato(iso, inizio = giornoInizio) {
+  return deperibilitaGiorno(iso, inizio) !== "Alta";
 }
 
 export const IMPOSTAZIONI_PREDEFINITE = {
@@ -123,6 +142,7 @@ export const IMPOSTAZIONI_PREDEFINITE = {
   maxPrep: 30,
   maxTotale: 60,
   maxRipetizioni: 2,
+  giornoSpesa: 6, // sabato
 };
 
 // giorniCasa: Map/oggetto data -> {tipo, nota}
@@ -144,6 +164,6 @@ export function infoGiorno(iso, giorniCasa = {}, imp = IMPOSTAZIONI_PREDEFINITE)
       cena: imp.moltFamiglia,
     },
     stagione: stagione(iso),
-    deperibilita: deperibilitaGiorno(iso),
+    deperibilita: deperibilitaGiorno(iso, imp.giornoSpesa ?? 6),
   };
 }

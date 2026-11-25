@@ -115,3 +115,29 @@ test("spostamento pasti: stesso pasto e stessa deperibilità", () => {
   assert.ok(motivoNoSpostamento("2026-11-28_cena", "2026-11-29_cena", alta, undefined));
   assert.ok(motivoNoSpostamento("2026-11-28_cena", "2026-11-28_cena", alta, alta));
 });
+
+test("giorno della spesa diverso dal sabato", async () => {
+  const { inizioSettimana: inizio, deperibilitaGiorno: dep, intervalloGiorni, infoGiorno: info } = await import("../js/calendario.js");
+  // spesa il mercoledì (3): la settimana va da mercoledì a martedì
+  assert.equal(inizio("2026-11-24", 3), "2026-11-18"); // martedì -> mercoledì prima
+  assert.equal(inizio("2026-11-25", 3), "2026-11-25");
+  assert.equal(dep("2026-11-25", 3), "Alta"); // mer
+  assert.equal(dep("2026-11-27", 3), "Alta"); // ven
+  assert.equal(dep("2026-11-28", 3), "Media"); // sab
+  assert.equal(dep("2026-12-01", 3), "Bassa"); // mar
+  assert.equal(intervalloGiorni(0, 2, 3), "mer-ven");
+  assert.equal(intervalloGiorni(0, 2), "sab-lun");
+  assert.equal(info("2026-11-28", {}, { moltFamiglia: 2.5, moltPranzoFeriale: 1, giornoSpesa: 3 }).deperibilita, "Media");
+});
+
+test("spesa: i prodotti presi vanno in fondo al loro reparto", async () => {
+  const { spuntatiInFondo } = await import("../js/spesa.js");
+  const voci = [
+    { nome: "Carote", reparto: "verdure", fatto: true },
+    { nome: "Patate", reparto: "verdure", fatto: false },
+    { nome: "Zucchine", reparto: "verdure", fatto: false },
+    { nome: "Mele", reparto: "frutta", fatto: true },
+    { nome: "Pere", reparto: "frutta", fatto: false },
+  ];
+  assert.deepEqual(spuntatiInFondo(voci).map((v) => v.nome), ["Patate", "Zucchine", "Carote", "Pere", "Mele"]);
+});

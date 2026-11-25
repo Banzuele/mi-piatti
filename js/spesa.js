@@ -1,4 +1,4 @@
-// Lista della spesa: somma gli ingredienti dei pasti di una settimana (sab-ven),
+// Lista della spesa: somma gli ingredienti dei pasti di una settimana (di solito sab-ven),
 // moltiplicati per le porzioni, ordinati come i reparti Esselunga.
 
 import { giorniSettimana, infoGiorno, usaSurgelato, GIORNI, giornoSettimana, IMPOSTAZIONI_PREDEFINITE } from "./calendario.js";
@@ -44,7 +44,7 @@ export function calcolaSpesa({
       for (const ing of r.ingredienti) {
         let a = alimentiPerId.get(ing.id);
         if (!a) continue;
-        if (a.surgelato && usaSurgelato(data)) a = alimentiPerId.get(a.surgelato) || a;
+        if (a.surgelato && usaSurgelato(data, imp.giornoSpesa ?? 6)) a = alimentiPerId.get(a.surgelato) || a;
         let v = voci.get(a.id);
         if (!v) {
           v = { alimento: a, quantita: 0, giorni: new Set(), ricette: new Set() };
@@ -82,6 +82,14 @@ export function ordinaPerReparto(lista) {
   return lista.sort((x, y) =>
     (POSIZIONE.get(x.reparto) ?? 99) - (POSIZIONE.get(y.reparto) ?? 99)
     || x.nome.localeCompare(y.nome, "it"));
+}
+
+// Dentro ogni reparto i prodotti già presi vanno in fondo; l'ordine dei reparti
+// e quello dei prodotti ancora da prendere restano uguali.
+export function spuntatiInFondo(voci) {
+  return voci.map((v, i) => ({ v, i })).sort((a, b) =>
+    (POSIZIONE.get(a.v.reparto) ?? 99) - (POSIZIONE.get(b.v.reparto) ?? 99)
+    || (a.v.fatto ? 1 : 0) - (b.v.fatto ? 1 : 0) || a.i - b.i).map((x) => x.v);
 }
 
 // Testo con caselle [ ] da incollare (es. in Google Keep)
