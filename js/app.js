@@ -4,12 +4,13 @@ import {
   oggiISO, inizioSettimana, aggiungiGiorni, giorniSettimana, giornoSettimana,
   GIORNI_LUNGHI, formattaGiornoMese, intervalloSettimana, infoGiorno, festivita,
   usaSurgelato, IMPOSTAZIONI_PREDEFINITE, daISO, formattaBreve,
+  impostaGiornoInizio, leggiGiornoInizio, intervalloGiorni, stagione as stagioneDi,
 } from "./calendario.js";
 import {
   PASTI, chiavePasto, generaPiano, scegliRicetta, entroTempi, surgelabile,
   deperibilitaCompatibile, REGOLE_SETTIMANA, motivoNoSpostamento as motivoNoSpost,
 } from "./pianificatore.js";
-import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita } from "./spesa.js";
+import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita, spuntatiInFondo } from "./spesa.js";
 import {
   chiaveProdotto, leggiNumero, prezzoUnitario, pulisciPrezzo, storico, statistiche, formattaEuro, formattaUnitario,
   costoVoce, UNITA_PREZZO,
@@ -23,7 +24,7 @@ const S = {
   pasti: {}, spunte: {}, extra: {}, giorniCasa: {}, impostazioni: {}, prezzi: {}, prezzoAperto: null,
   utente: null, pronto: false, inAttesa: false, errore: null,
   scheda: "menu", settimana: inizioSettimana(oggiISO()), scambio: null,
-  mostraDispensa: true, cercaRicetta: "", filtroPasto: "tutti",
+  mostraDispensa: true, cercaRicetta: "", filtroPasto: "tutti", filtroStagione: "tutte", aggiornando: false,
 };
 const archivio = creaArchivio(firebaseConfig, famiglia);
 const $contenuto = document.getElementById("contenuto");
@@ -108,6 +109,16 @@ function pulisciRicetta(r) {
   };
 }
 
+// Giorno della spesa (Altro > Impostazioni): sposta l'inizio delle settimane.
+// Se si stava guardando la settimana in corso, si resta sulla settimana in corso.
+function applicaGiornoSpesa() {
+  const g = imp().giornoSpesa;
+  if (g === leggiGiornoInizio()) return;
+  const eraCorrente = S.settimana === inizioSettimana(oggiISO());
+  impostaGiornoInizio(g);
+  S.settimana = eraCorrente ? inizioSettimana(oggiISO()) : inizioSettimana(S.settimana);
+}
+
 // ---------------------------------------------------------------- avvio
 async function avvia() {
   try {
@@ -133,6 +144,7 @@ async function avvia() {
       for (const coll of ["pasti", "spunte", "extra", "giorniCasa", "impostazioni", "ricetteUtente", "alimentiUtente", "prezzi"]) {
         stacca.push(archivio.ascolta(coll, (dati, meta) => {
           S[coll] = coll === "prezzi" ? pulisciTuttiPrezzi(dati) : dati;
+          if (coll === "impostazioni") applicaGiornoSpesa();
           if (coll === "ricetteUtente" || coll === "alimentiUtente") ricalcolaDati();
           S.inAttesa = meta.inAttesa;
           S.pronto = true;
@@ -160,6 +172,7 @@ async function avvia() {
 // Stato della sincronizzazione: piccola etichetta in cima a ogni pagina
 // (sotto le date della settimana nel Menù e nella Spesa).
 function testoStato() {
+  if (S.aggiornando) return "Aggiorno…";
   if (archivio.modalita === "locale") return "📱 Solo su questo telefono";
   if (!S.utente) return "";
   if (!navigator.onLine) return "📴 Offline: salvo e sincronizzo dopo";
@@ -167,9 +180,13 @@ function testoStato() {
 }
 function disegnaStato() {
   const t = testoStato();
-  document.querySelectorAll(".stato-sync").forEach((el) => { el.textContent = t; });
+  document.querySelectorAll(".stato-sync").forEach((el) => {
+    el.textContent = t;
+    el.classList.toggle("carica", S.aggiornando);
+  });
 }
-const statoSync = () => `<span class="stato-sync">${esc(testoStato())}</span>`;
+// durante l'aggiornamento (trascinando giù la pagina) al posto della nuvola c'è una rotellina
+const statoSync = () => `<span class="stato-sync${S.aggiornando ? " carica" : ""}">${esc(testoStato())}</span>`;
 
 const ORDINE_SCHEDE = ["menu", "spesa", "ricette", "altro"];
 function disegna() {
@@ -340,7 +357,7 @@ function apriGenera() {
   const opzioni = [0, 7, 14, 21].map((n) => aggiungiGiorni(corrente, n));
   const scelta = opzioni.includes(S.settimana) ? S.settimana : opzioni[S.settimana < corrente ? 0 : 1];
   apriModale(`<h2>Genera il menù</h2>
-    <label>Da sabato
+    <label>Da ${GIORNI_LUNGHI[leggiGiornoInizio()].toLowerCase()}
       <select id="gen-inizio">${opzioni.map((d) =>
         `<option value="${d}" ${d === scelta ? "selected" : ""}>${intervalloSettimana(d)}</option>`).join("")}</select>
     </label>
@@ -558,7 +575,7 @@ function disegnaEditor() {
     <div class="griglia-2">
       <label>Pasto <select name="pasto" ${b.id ? "disabled" : ""}>${opz([["pranzo", "Pranzo"], ["cena", "Cena"]], b.pasto)}</select></label>
       <label>Proteina <select name="proteina">${opz(PROTEINE.map((p) => [p, p]), b.proteina)}</select></label>
-      <label>Deperibilità <select name="deperibilita">${opz([["Alta", "Alta (sab-lun)"], ["Media", "Media (mar-mer)"], ["Bassa", "Bassa (gio-ven)"]], b.deperibilita)}</select></label>
+      <label>Deperibilità <select name="deperibilita">${opz([["Alta", `Alta (${intervalloGiorni(0, 2)})`], ["Media", `Media (${intervalloGiorni(3, 4)})`], ["Bassa", `Bassa (${intervalloGiorni(5, 6)})`]], b.deperibilita)}</select></label>
       <span></span>
       <label>Minuti attivi <input name="tempoPrep" type="number" min="1" inputmode="numeric" value="${esc(b.tempoPrep)}"></label>
       <label>Minuti totali <input name="tempoTotale" type="number" min="1" inputmode="numeric" value="${esc(b.tempoTotale)}"></label>
@@ -1013,10 +1030,11 @@ function salvaAggiungi(dati) {
 function vistaSpesa() {
   let h = navSettimana();
   const tutte = vociSpesa();
-  const voci = tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra);
+  const voci = spuntatiInFondo(tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra));
   const presi = voci.filter((v) => v.fatto).length;
   h += `<div class="azioni-spesa">
-    <button class="btn piccolo" data-azione="copia-spesa">📋 Copia come testo</button>
+    ${"share" in navigator ? `<button class="btn piccolo" data-azione="condividi-spesa">📤 Condividi</button>` : ""}
+    <button class="btn piccolo" data-azione="copia-spesa">📋 Copia</button>
     <button class="btn piccolo" data-azione="azzera-spunte">↺ Togli le spunte</button>
   </div>
   <div class="barra-spesa">
@@ -1034,7 +1052,7 @@ function vistaSpesa() {
       reparto = v.reparto;
       h += `<h3 class="reparto">${esc(REPARTI.find((r) => r.id === reparto)?.nome || reparto)}</h3><ul class="spesa">`;
     }
-    h += `<li class="${v.fatto ? "fatto" : ""}">
+    h += `<li class="${v.fatto ? "fatto" : ""}" data-voce="${esc(v.chiave)}">
       <label>
         <input type="checkbox" data-azione="spunta" data-chiave="${esc(v.chiave)}" ${v.extra ? 'data-extra="1"' : ""} ${v.fatto ? "checked" : ""}>
         <span class="voce">
@@ -1053,6 +1071,7 @@ function vistaSpesa() {
 }
 
 // ---------------------------------------------------------------- ricette
+const NOMI_STAGIONI = { primavera: "🌸 Primavera", estate: "☀️ Estate", autunno: "🍂 Autunno", inverno: "❄️ Inverno" };
 function vistaRicette() {
   const filtri = [["tutti", "Tutte"], ["pranzo", "Pranzi"], ["cena", "Cene"]];
   return `<div class="riga-stato">${statoSync()}</div>
@@ -1060,6 +1079,9 @@ function vistaRicette() {
     <input type="search" id="cerca-ricette" placeholder="Cerca una ricetta o un ingrediente…" value="${esc(S.cercaRicetta)}">
     <div class="chip-riga">${filtri.map(([v, t]) =>
       `<button class="chip ${S.filtroPasto === v ? "attivo" : ""}" data-azione="filtro-pasto" data-valore="${v}">${t}</button>`).join("")}</div>
+    <div class="chip-riga scorre" role="group" aria-label="Stagione">${[["tutte", "Tutte le stagioni"], ...STAGIONI.map((s) => [s, NOMI_STAGIONI[s]])].map(([v, t]) =>
+      `<button class="chip ${S.filtroStagione === v ? "attivo" : ""}" data-azione="filtro-stagione" data-valore="${v}"
+        ${v === stagioneDi(oggiISO()) ? 'title="Stagione attuale"' : ""}>${t}${v === stagioneDi(oggiISO()) ? ' <span class="ora">ora</span>' : ""}</button>`).join("")}</div>
     <div id="lista-ricette"></div>`;
 }
 
@@ -1068,6 +1090,7 @@ function disegnaListaRicette() {
   if (!el) return;
   const f = S.cercaRicetta.toLowerCase().trim();
   const elenco = S.tutteRicette.filter((r) => (S.filtroPasto === "tutti" || r.pasto === S.filtroPasto)
+    && (S.filtroStagione === "tutte" || r.stagioni.includes(S.filtroStagione))
     && (!f || r.nome.toLowerCase().includes(f)
       || r.ingredienti.some((i) => S.alimentiPerId.get(i.id)?.nome.toLowerCase().includes(f))));
   elenco.sort((a, b) => (a.nascosta ? 1 : 0) - (b.nascosta ? 1 : 0));
@@ -1131,6 +1154,11 @@ function vistaAltro() {
   <section class="pannello">
     <h2>Impostazioni</h2>
     <form class="form-imp" data-azione="salva-imp">
+      <label>Giorno della spesa e del nuovo menù
+        <select name="giornoSpesa">${[6, 0, 1, 2, 3, 4, 5].map((g) =>
+          `<option value="${g}" ${g === I.giornoSpesa ? "selected" : ""}>${GIORNI_LUNGHI[g]}</option>`).join("")}</select>
+      </label>
+      <p class="nota">La settimana del menù e della spesa parte da questo giorno. Deperibilità: Alta ${intervalloGiorni(0, 2)}, Media ${intervalloGiorni(3, 4)}, Bassa ${intervalloGiorni(5, 6)}.</p>
       <label>Porzioni pranzo feriale <input type="number" step="0.5" min="0.5" name="moltPranzoFeriale" value="${esc(I.moltPranzoFeriale)}"></label>
       <label>Porzioni famiglia (cene, weekend, feste) <input type="number" step="0.5" min="0.5" name="moltFamiglia" value="${esc(I.moltFamiglia)}"></label>
       <label>Preparazione attiva massima (min) <input type="number" min="5" name="maxPrep" value="${esc(I.maxPrep)}"></label>
@@ -1140,6 +1168,20 @@ function vistaAltro() {
     </form>
   </section>
   <p class="nota centro">Mi-Piatti ${document.documentElement.dataset.versione || ""} · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+}
+
+// Testo della lista (stesso ordine della pagina) da condividere o copiare
+function testoSpesa() {
+  const voci = spuntatiInFondo(vociSpesa().filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra));
+  return spesaComeTesto(`Spesa ${intervalloSettimana(S.settimana)}`, voci);
+}
+async function copiaTesto(testo) {
+  try { await navigator.clipboard.writeText(testo); avviso("Lista copiata"); }
+  catch {
+    apriModale(`<h2>Copia la lista</h2><p class="nota">Tieni premuto sul testo e scegli Copia.</p>
+      <textarea class="testo-copia" readonly>${esc(testo)}</textarea>
+      <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
+  }
 }
 
 // ---------------------------------------------------------------- modale
@@ -1229,6 +1271,7 @@ document.addEventListener("click", async (e) => {
     case "chiudi": chiudiModale(); break;
     case "vai-menu": S.scheda = "menu"; disegna(); break;
     case "filtro-pasto": S.filtroPasto = el.dataset.valore; disegna(); break;
+    case "filtro-stagione": S.filtroStagione = el.dataset.valore; disegna(); break;
     case "togli-extra": archivio.elimina("extra", id); break;
     case "togli-casa":
       archivio.scriviMolti(el.dataset.giorni.split(",").map((d) => ({ coll: "giorniCasa", id: d, dati: null })));
@@ -1237,14 +1280,18 @@ document.addEventListener("click", async (e) => {
     case "apri-aggiungi": apriAggiungi(); break;
     case "scegli-prodotto": scegliProdotto(id); break;
     case "togli-prezzo": archivio.elimina("prezzi", chiave); S.prezzoAperto = null; chiudiModale(); avviso("Prezzo tolto"); break;
-    case "copia-spesa": {
-      const voci = vociSpesa().filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra);
-      const testo = spesaComeTesto(`Spesa ${intervalloSettimana(S.settimana)}`, voci);
-      try { await navigator.clipboard.writeText(testo); avviso("Lista copiata"); }
-      catch { apriModale(`<h2>Copia la lista</h2><textarea class="testo-copia" readonly>${esc(testo)}</textarea>
-        <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`); }
+    case "condividi-spesa": {
+      // Web Share: Android e iPhone aprono il loro menu (WhatsApp, Keep, Note…).
+      // Va chiamata subito nel tocco, senza attese prima (Safari lo richiede).
+      const testo = testoSpesa();
+      try {
+        await navigator.share({ title: `Spesa ${intervalloSettimana(S.settimana)}`, text: testo });
+      } catch (err) {
+        if (err?.name !== "AbortError") await copiaTesto(testo); // annullato dall'utente: niente
+      }
       break;
     }
+    case "copia-spesa": await copiaTesto(testoSpesa()); break;
     case "azzera-spunte": {
       const ops = [];
       for (const k of Object.keys(S.spunte)) if (k.startsWith(`${S.settimana}_`)) ops.push({ coll: "spunte", id: k, dati: null });
@@ -1340,7 +1387,93 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   });
 }
 
+// ---------------------------------------------------------------- trascina giù per aggiornare
+// Al posto della ricarica del browser (che rifarebbe l'intro): si trascina giù
+// la pagina quando è già in cima, compare una freccia che gira e, lasciando,
+// l'app cerca una nuova versione e rilegge ricette e alimenti. Menù e spesa
+// arrivano già da soli da Firestore. Durante l'attesa, in alto al posto della
+// nuvola c'è una rotellina. Touch events: funzionano uguali su Android e iPhone.
+const $tira = document.getElementById("tira");
+const SOGLIA_TIRA = 64;
+let tira = null;
+const attendi = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+function mostraTira(d, gira = false) {
+  $tira.classList.toggle("gira", gira);
+  $tira.classList.toggle("pronta", d >= SOGLIA_TIRA);
+  $tira.style.setProperty("--d", `${d}px`);
+  $tira.style.setProperty("--r", `${d * 4}deg`);
+  $tira.style.setProperty("--o", String(Math.min(1, d / 40)));
+}
+
+async function aggiornaApp() {
+  if (S.aggiornando) return;
+  S.aggiornando = true;
+  disegnaStato();
+  // se in pagina non c'è lo stato (es. un'altra settimana) gira la freccia in alto
+  const conStato = [...document.querySelectorAll(".stato-sync")].some((el) => el.offsetParent);
+  mostraTira(conStato ? 0 : SOGLIA_TIRA, !conStato);
+  const t0 = Date.now();
+  try {
+    const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    const [ricette, alimenti] = await Promise.all([
+      fetch("data/ricette.json", { cache: "no-cache" }).then((r) => r.json()),
+      fetch("data/alimenti.json", { cache: "no-cache" }).then((r) => r.json()),
+      reg ? Promise.race([reg.update().catch(() => {}), attendi(4000)]) : null,
+    ]);
+    S.ricetteBase = ricette;
+    S.alimentiBase = alimenti;
+    ricalcolaDati();
+  } catch (e) {
+    console.warn("Aggiornamento non riuscito", e);
+  }
+  await attendi(Math.max(0, 900 - (Date.now() - t0)));
+  S.aggiornando = false;
+  mostraTira(0);
+  disegna();
+}
+
+window.addEventListener("touchstart", (e) => {
+  if (e.touches.length !== 1 || window.scrollY > 0 || !$modale.hidden || S.trascina || S.aggiornando) return;
+  if (e.target.closest(".maniglia, input, textarea, select")) return;
+  tira = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, d: 0, deciso: false };
+}, { passive: true });
+
+window.addEventListener("touchmove", (e) => {
+  if (!tira) return;
+  const dx = e.touches[0].clientX - tira.x0, dy = e.touches[0].clientY - tira.y0;
+  if (!tira.deciso) {
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+    // solo un trascinamento verso il basso, con la pagina in cima
+    if (dy <= 0 || Math.abs(dx) > Math.abs(dy) || window.scrollY > 0) { tira = null; return; }
+    tira.deciso = true;
+  }
+  if (e.cancelable) e.preventDefault(); // niente ricarica né rimbalzo del browser
+  tira.d = Math.min(110, Math.max(0, dy) * 0.5);
+  mostraTira(tira.d);
+}, { passive: false });
+
+function fineTira() {
+  if (!tira) return;
+  const ok = tira.deciso && tira.d >= SOGLIA_TIRA;
+  tira = null;
+  if (ok) aggiornaApp(); else mostraTira(0);
+}
+window.addEventListener("touchend", fineTira);
+window.addEventListener("touchcancel", fineTira);
+
+// Pagina ricaricata dal browser: la rotellina resta finché i dati non sono pronti
+if (document.documentElement.classList.contains("ricaricata")) {
+  S.aggiornando = true;
+  const t0 = Date.now();
+  const controlla = () => {
+    if ((S.pronto && Date.now() - t0 > 700) || Date.now() - t0 > 8000) { S.aggiornando = false; disegnaStato(); }
+    else setTimeout(controlla, 150);
+  };
+  controlla();
+}
+
 // per i test
-window.__mipiatti = { S, daISO };
+window.__mipiatti = { S, daISO, aggiornaApp };
 
 avvia();

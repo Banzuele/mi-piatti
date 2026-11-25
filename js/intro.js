@@ -52,5 +52,8 @@
     else if (nascostaDa && Date.now() - nascostaDa >= RIAPERTURA_DOPO) mostra();
   });
 
-  mostra();
+  // Pagina ricaricata (trascinando giù o con "Aggiorna"): niente intro,
+  // l'app mostra il caricamento al posto della nuvola in alto.
+  if (document.documentElement.classList.contains("ricaricata")) intro.classList.add("chiusa");
+  else mostra();
 })();
