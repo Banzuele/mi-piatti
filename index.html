@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it" data-versione="v13">
+<html lang="it" data-versione="v14">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -45,7 +45,7 @@
   <!-- /SPLASH -->
   <link rel="stylesheet" href="css/stile.css">
   <!-- pagina ricaricata (es. trascinando giù nel browser): niente intro, solo il caricamento in alto -->
-  <script>try { if ((performance.getEntriesByType("navigation")[0] || {}).type === "reload") document.documentElement.classList.add("ricaricata"); } catch (e) {}</script>
+  <script>try { if ((performance.getEntriesByType("navigation")[0] || {}).type === "reload" && !sessionStorage.getItem("mipiatti:aggiornata")) document.documentElement.classList.add("ricaricata"); } catch (e) {}</script>
 </head>
 <body>
   <div id="intro" class="intro" role="status" aria-live="polite">

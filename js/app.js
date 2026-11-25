@@ -1374,7 +1374,32 @@ window.addEventListener("offline", disegnaStato);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$modale.hidden) chiudiModale(); });
 
 // Aggiornamenti: il telefono controlla se c'è una nuova versione a ogni apertura
-// e quando l'app torna in primo piano; se c'è, mostra un avviso per ricaricare.
+// e quando l'app torna in primo piano; se c'è, si aggiorna da sola: compare
+// l'intro con "Aggiorno…" e la pagina si ricarica. Se si sta scrivendo (pop-up
+// aperto, campo attivo, trascinamento) si aspetta che si abbia finito.
+// Se dopo un aggiornamento automatico ne arriva subito un altro (meno di 30 s),
+// per non ricaricare all'infinito si mostra il vecchio avviso con "Aggiorna".
+const CHIAVE_AGG = "mipiatti:aggiornata";
+const CHIAVE_ULTIMO_AGG = "mipiatti:ultimo-aggiornamento";
+let attesaAggiornamento = null;
+function occupato() {
+  const a = document.activeElement;
+  return !$modale.hidden || !!S.trascina || !!tira
+    || (a && ["INPUT", "TEXTAREA", "SELECT"].includes(a.tagName));
+}
+function applicaAggiornamento() {
+  clearTimeout(attesaAggiornamento);
+  if (occupato()) { attesaAggiornamento = setTimeout(applicaAggiornamento, 1500); return; }
+  let ultimo = 0;
+  try { ultimo = Number(sessionStorage.getItem(CHIAVE_ULTIMO_AGG)) || 0; } catch { /* niente */ }
+  if (Date.now() - ultimo < 30000) { avvisoAggiornamento(); return; }
+  try {
+    sessionStorage.setItem(CHIAVE_AGG, "1");
+    sessionStorage.setItem(CHIAVE_ULTIMO_AGG, String(Date.now()));
+  } catch { /* senza sessionStorage si ricarica comunque */ }
+  window.mostraIntroAggiornamento?.("Nuova versione: aggiorno…");
+  setTimeout(() => location.reload(), 900);
+}
 function avvisoAggiornamento() {
   if (document.getElementById("aggiorna")) return;
   const el = document.createElement("div");
@@ -1393,10 +1418,10 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
     });
   }).catch((e) => console.warn("Service worker non registrato", e));
   // un nuovo service worker ha preso il controllo mentre l'app era aperta
-  navigator.serviceWorker.addEventListener("controllerchange", () => { if (giaControllata) avvisoAggiornamento(); });
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (giaControllata) applicaAggiornamento(); });
   // il service worker ha servito una copia vecchia e poi ha scaricato quella nuova
   navigator.serviceWorker.addEventListener("message", (e) => {
-    if (e.data?.tipo === "aggiornamento") avvisoAggiornamento();
+    if (e.data?.tipo === "aggiornamento") applicaAggiornamento();
   });
 }
 
