@@ -1,6 +1,6 @@
 // Service worker: l'app funziona anche senza rete (es. al supermercato).
 // Cambiare VERSIONE a ogni rilascio: i telefoni riscaricano tutti i file.
-const VERSIONE = "mi-piatti-v13";
+const VERSIONE = "mi-piatti-v14";
 const FILE = [
   "./", "index.html", "manifest.webmanifest", "config.js",
   "css/stile.css",
@@ -39,7 +39,7 @@ self.addEventListener("fetch", (e) => {
 // - cache "no-cache": chiede sempre al server se il file è cambiato, invece di
 //   riusare per 10 minuti la copia nella cache HTTP del telefono (GitHub Pages);
 // - se la rete non risponde entro 4 secondi si usa la copia salvata; se poi
-//   arriva un file diverso, l'app mostra "Nuova versione disponibile".
+//   arriva un file diverso, l'app si aggiorna da sola (intro + ricarica).
 async function primaRete(req, url) {
   const cache = await caches.open(VERSIONE);
   const chiave = req.mode === "navigate"
