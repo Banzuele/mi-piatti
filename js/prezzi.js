@@ -78,3 +78,22 @@ export function formattaEuro(v) {
 export function formattaUnitario(u) {
   return u ? `${formattaEuro(u.valore)}/${u.unita}` : "";
 }
+
+// Costo di una quantità dato un prezzo al kg / al litro / al pezzo
+export function costoDaUnitario(unitario, quantita, unita) {
+  if (!(unitario > 0) || !(quantita > 0)) return null;
+  return unitario * (unita === "g" || unita === "ml" ? quantita / 1000 : quantita);
+}
+
+// Costo previsto di una voce della spesa: il prezzo pagato questa settimana,
+// altrimenti l'ultimo prezzo vero, altrimenti la stima iniziale dell'alimento.
+// I prezzi veri, appena ci sono, prendono sempre il posto della stima.
+export function costoVoce({ pagato, st, stima, quantita, unita }) {
+  if (pagato) return { valore: pagato.prezzo, fonte: "pagato" };
+  if (st && st.ultimo.unita === (UNITA_PREZZO[unita] || "pz")) {
+    const v = costoDaUnitario(st.ultimo.valore, quantita, unita);
+    if (v) return { valore: v, fonte: "ultimo" };
+  }
+  const v = costoDaUnitario(stima, quantita, unita);
+  return v ? { valore: v, fonte: "stima" } : null;
+}
