@@ -862,7 +862,12 @@ function apriPrezzo(chiave) {
   S.prezzoAperto = { chiave, prodotto: v.prodotto, nome: v.nome, unitaFissa, data: esistente?.data };
   const lista = storico(S.prezzi, v.prodotto);
   const st = statistiche(lista);
-  const valore = esistente ? String(esistente.prezzo).replace(".", ",") : "";
+  // Prezzo già scritto, oppure proposto (ultimo prezzo al kg o stima × quantità):
+  // se va bene basta toccare Salva, senza aprire la tastiera.
+  const proposta = esistente ? null
+    : costoVoce({ pagato: null, st, stima: stimaDi(v), quantita, unita });
+  const numVal = esistente ? esistente.prezzo : proposta ? Math.round(proposta.valore * 100) / 100 : null;
+  const valore = numVal ? numVal.toFixed(2).replace(".", ",") : "";
   apriModale(`<h2>💶 ${esc(v.nome)}</h2>
   <form class="editor" data-azione="salva-prezzo">
     <div class="griglia-2">
@@ -875,21 +880,21 @@ function apriPrezzo(chiave) {
         </span></label>
     </div>
     <p class="anteprima-prezzo" id="anteprima-prezzo"></p>
-    ${st ? `<p class="nota">Ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})${st.n > 1 ? ` · media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })} su ${st.n} acquisti` : ""}</p>` : stimaDi(v)
+    ${proposta?.fonte === "stima" ? "" : st ? `<p class="nota">Ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})${st.n > 1 ? ` · media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })} su ${st.n} acquisti` : ""}</p>` : stimaDi(v)
       ? `<p class="nota">Nessun prezzo ancora: <b>stima</b> ${formattaUnitario({ valore: stimaDi(v), unita: UNITA_PREZZO[unita] || "pz" })} (indicativa, la sostituisce il primo prezzo che scrivi).</p>`
       : `<p class="nota">Primo prezzo per questo prodotto.</p>`}
-    <div class="azioni-modale">
+    ${proposta ? `<p class="nota proposta">Prezzo proposto ${proposta.fonte === "ultimo" ? "dall'ultimo acquisto" : "dalla stima (indicativa)"}: se è giusto tocca <b>Salva</b>, altrimenti toccalo e correggilo.</p>` : ""}
+    ${lista.length ? `<details class="storico"><summary>Storico (${lista.length})</summary><table class="storico-prezzi"><tbody>${lista.slice(0, 12).map((p) => `<tr>
+      <td>${esc(formattaBreve(p.data))}</td><td>${formattaEuro(p.prezzo)}</td>
+      <td>${esc(formattaQuantita(p.quantita, p.unita))}</td><td><b>${formattaUnitario(p.unitario)}</b></td></tr>`).join("")}</tbody></table></details>` : ""}
+    <div class="azioni-modale azioni-prezzo">
       ${esistente ? `<button type="button" class="btn pericolo" data-azione="togli-prezzo" data-chiave="${esc(chiave)}">Togli</button>` : ""}
       <button type="button" class="btn" data-azione="chiudi">${esistente ? "Chiudi" : "Salta"}</button>
-      <button class="btn primario">Salva</button>
+      <button class="btn primario salva">Salva</button>
     </div>
-  </form>
-  ${lista.length ? `<h3>Storico</h3><table class="storico-prezzi"><tbody>${lista.slice(0, 12).map((p) => `<tr>
-      <td>${esc(formattaBreve(p.data))}</td><td>${formattaEuro(p.prezzo)}</td>
-      <td>${esc(formattaQuantita(p.quantita, p.unita))}</td><td><b>${formattaUnitario(p.unitario)}</b></td></tr>`).join("")}</tbody></table>` : ""}`);
+  </form>`);
   aggiornaAnteprimaPrezzo();
-  const inp = document.getElementById("prezzo-valore");
-  setTimeout(() => inp?.focus(), 50);
+  // niente tastiera all'apertura: si apre solo toccando il campo (che si seleziona tutto)
 }
 
 function aggiornaAnteprimaPrezzo() {
@@ -1319,6 +1324,14 @@ document.addEventListener("change", (e) => {
   } else if (el.dataset.azione === "dispensa") {
     S.mostraDispensa = el.checked;
     disegna();
+  }
+});
+
+// toccando il prezzo si seleziona tutto, così si riscrive subito (Android e iPhone)
+document.addEventListener("focusin", (e) => {
+  if (e.target.id === "prezzo-valore" || e.target.id === "prezzo-q") {
+    const el = e.target;
+    setTimeout(() => { try { el.select(); } catch { /* campi number su alcuni browser */ } }, 0);
   }
 });
 
