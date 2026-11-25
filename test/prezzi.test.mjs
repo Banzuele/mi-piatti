@@ -59,3 +59,22 @@ test("storico, media e andamento", () => {
   const giu = statistiche(storico({ ...prezzi, c: { ...prezzi.c, prezzo: 0.8 } }, "AL012"));
   assert.equal(giu.tendenza, "giu");
 });
+
+test("costo previsto: pagato, poi ultimo prezzo vero, poi stima", async () => {
+  const { costoVoce, costoDaUnitario } = await import("../js/prezzi.js");
+  assert.equal(costoDaUnitario(2, 500, "g"), 1);
+  assert.equal(costoDaUnitario(0.4, 3, "pz"), 1.2000000000000002);
+  const st = { ultimo: { valore: 3, unita: "kg" } };
+  assert.deepEqual(costoVoce({ pagato: { prezzo: 2.49 }, st, stima: 2, quantita: 500, unita: "g" }), { valore: 2.49, fonte: "pagato" });
+  assert.deepEqual(costoVoce({ st, stima: 2, quantita: 500, unita: "g" }), { valore: 1.5, fonte: "ultimo" });
+  assert.deepEqual(costoVoce({ stima: 2, quantita: 500, unita: "g" }), { valore: 1, fonte: "stima" });
+  assert.equal(costoVoce({ quantita: 500, unita: "g" }), null);
+});
+
+test("ogni alimento ha una stima di prezzo plausibile", async () => {
+  const { readFileSync } = await import("node:fs");
+  const alimenti = JSON.parse(readFileSync(new URL("../data/alimenti.json", import.meta.url)));
+  for (const a of alimenti) {
+    assert.ok(a.stima > 0 && a.stima < 100, `${a.id} ${a.nome}: stima ${a.stima}`);
+  }
+});

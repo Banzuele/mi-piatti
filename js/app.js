@@ -12,6 +12,7 @@ import {
 import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita } from "./spesa.js";
 import {
   chiaveProdotto, leggiNumero, prezzoUnitario, pulisciPrezzo, storico, statistiche, formattaEuro, formattaUnitario,
+  costoVoce, UNITA_PREZZO,
 } from "./prezzi.js";
 
 // ---------------------------------------------------------------- stato
@@ -728,10 +729,26 @@ const FRECCE = { su: ["↑", "più caro"], giu: ["↓", "più economico"], ugual
 
 // Riga sotto la voce della spesa: prezzo pagato questa settimana, oppure ultimo
 // prezzo e media; toccandola si apre il prezzo con lo storico.
+// Stima iniziale dell'alimento (€ al kg / al litro / al pezzo), dai file del repository
+function stimaDi(v) {
+  const s = v.extra ? null : S.alimentiPerId.get(v.id)?.stima;
+  return Number(s) > 0 ? Number(s) : null;
+}
+// Quantità che si compra davvero: le confezioni intere se note
+function quantitaComprata(v) {
+  const a = v.extra ? null : S.alimentiPerId.get(v.id);
+  return a?.conf && v.confezioni ? v.confezioni * a.conf : v.quantita || 1;
+}
+
 function rigaPrezzo(v) {
   const pagato = S.prezzi[v.chiave];
   const st = statistiche(storico(S.prezzi, v.prodotto));
-  if (!pagato && !st) return "";
+  if (!pagato && !st) {
+    const stima = stimaDi(v);
+    if (!stima) return "";
+    const c = costoVoce({ stima, quantita: quantitaComprata(v), unita: v.unita });
+    return `<button type="button" class="voce-prezzo stima" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">💶 stima ${formattaUnitario({ valore: stima, unita: UNITA_PREZZO[v.unita] || "pz" })}${c ? ` · ~${formattaEuro(c.valore)}` : ""}</button>`;
+  }
   const parti = [];
   if (pagato) parti.push(`pagato ${formattaEuro(pagato.prezzo)}`);
   if (st) {
@@ -750,8 +767,7 @@ function apriPrezzo(chiave) {
   const unita = esistente?.unita || v.unita || "pz";
   let quantita = esistente?.quantita;
   if (!quantita) {
-    const a = S.alimentiPerId.get(v.id);
-    quantita = !v.extra && a?.conf && v.confezioni ? v.confezioni * a.conf : v.quantita || 1;
+    quantita = quantitaComprata(v);
   }
   S.prezzoAperto = { chiave, prodotto: v.prodotto, nome: v.nome, unitaFissa, data: esistente?.data };
   const lista = storico(S.prezzi, v.prodotto);
@@ -769,7 +785,9 @@ function apriPrezzo(chiave) {
         </span></label>
     </div>
     <p class="anteprima-prezzo" id="anteprima-prezzo"></p>
-    ${st ? `<p class="nota">Ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})${st.n > 1 ? ` · media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })} su ${st.n} acquisti` : ""}</p>` : `<p class="nota">Primo prezzo per questo prodotto.</p>`}
+    ${st ? `<p class="nota">Ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})${st.n > 1 ? ` · media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })} su ${st.n} acquisti` : ""}</p>` : stimaDi(v)
+      ? `<p class="nota">Nessun prezzo ancora: <b>stima</b> ${formattaUnitario({ valore: stimaDi(v), unita: UNITA_PREZZO[unita] || "pz" })} (indicativa, la sostituisce il primo prezzo che scrivi).</p>`
+      : `<p class="nota">Primo prezzo per questo prodotto.</p>`}
     <div class="azioni-modale">
       ${esistente ? `<button type="button" class="btn pericolo" data-azione="togli-prezzo" data-chiave="${esc(chiave)}">Togli</button>` : ""}
       <button type="button" class="btn" data-azione="chiudi">${esistente ? "Chiudi" : "Salta"}</button>
@@ -811,13 +829,28 @@ function salvaPrezzo(dati) {
   avviso(`Salvato: ${formattaUnitario(prezzoUnitario(p.prezzo, p.quantita, p.unita))}`);
 }
 
+// Totale della lista visibile: prezzi pagati + ultimi prezzi veri + stime
+function totaleSpesa(voci) {
+  let tot = 0, pagato = 0, stime = 0;
+  for (const v of voci) {
+    const st = statistiche(storico(S.prezzi, v.prodotto));
+    const c = costoVoce({ pagato: S.prezzi[v.chiave], st, stima: stimaDi(v), quantita: quantitaComprata(v), unita: v.unita });
+    if (!c) continue;
+    tot += c.valore;
+    if (c.fonte === "pagato") pagato += c.valore;
+    if (c.fonte === "stima") stime++;
+  }
+  if (!tot) return "";
+  return ` · <b class="totale-spesa" title="${stime} prezzi stimati">≈ ${formattaEuro(tot)}</b>${pagato ? ` <small>(pagati ${formattaEuro(pagato)})</small>` : ""}`;
+}
+
 function vistaSpesa() {
   let h = navSettimana();
   const tutte = vociSpesa();
   const voci = tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra);
   const presi = voci.filter((v) => v.fatto).length;
   h += `<div class="barra-spesa">
-    <span>${presi}/${voci.length} presi</span>
+    <span>${presi}/${voci.length} presi${totaleSpesa(voci)}</span>
     <label class="interruttore"><input type="checkbox" data-azione="dispensa" ${S.mostraDispensa ? "checked" : ""}> Mostra dispensa</label>
   </div>`;
   if (!tutte.length) {

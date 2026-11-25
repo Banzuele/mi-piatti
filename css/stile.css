@@ -304,3 +304,5 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
 .storico-prezzi { width: 100%; border-collapse: collapse; font-size: 14px; }
 .storico-prezzi td { padding: 6px 4px; border-top: 1px solid var(--bordo); }
 .storico-prezzi td:last-child { text-align: right; }
+.voce-prezzo.stima { background: transparent; border: 1px dashed var(--bordo); color: var(--tenue); }
+.totale-spesa { color: var(--primario); }
