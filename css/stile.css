@@ -16,6 +16,7 @@
   --barra: #2f6b4f;
   --barra-ico: rgba(255, 255, 255, .68);
   --barra-attiva: #ffffff;
+  --barra-pastiglia: rgba(255, 255, 255, .22);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -32,6 +33,7 @@
     --barra: #2b5a44;
     --barra-ico: rgba(231, 236, 233, .62);
     --barra-attiva: #ffffff;
+    --barra-pastiglia: rgba(255, 255, 255, .2);
     color-scheme: dark;
   }
 }
@@ -61,9 +63,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--primario); color: var(--primario-testo); font-size: 12px; font-weight: 600; cursor: pointer;
 }
 
-/* barra inferiore: un'unica forma verde; sotto la scheda attiva la barra si
-   alza in una gobba rotonda (cerchio e barra senza linee di separazione).
-   L'ombra è sul gruppo intero, così segue il contorno unico. */
+/* barra inferiore: verde pieno, piatta; la scheda attiva si riconosce dal colore
+   (pastiglia chiara dietro l'icona, icona e scritta bianche e in grassetto). */
 .schede {
   --x: calc((var(--attiva) + .5) * 25%);
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
@@ -73,16 +74,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   filter: drop-shadow(0 -2px 8px rgba(0, 0, 0, .18));
 }
 .schede-sfondo { position: absolute; inset: 0; background: var(--barra); border-radius: 20px 20px 0 0; }
+/* scheda attiva: una pastiglia più chiara dietro l'icona, che scorre tra le schede */
 .schede-bolla {
-  position: absolute; top: -26px; left: calc(var(--x) - 31px); width: 62px; height: 62px;
-  border-radius: 50%; background: var(--barra);
+  position: absolute; top: 9px; left: calc(var(--x) - 32px); width: 64px; height: 32px;
+  border-radius: 16px; background: var(--barra-pastiglia);
 }
-/* raccordi curvi tra la gobba e il bordo della barra */
-.schede-bolla::before, .schede-bolla::after {
-  content: ""; position: absolute; top: 16px; width: 14px; height: 10px;
-}
-.schede-bolla::before { right: calc(100% - 3px); background: radial-gradient(circle at 0 0, transparent 9.5px, var(--barra) 10px); }
-.schede-bolla::after { left: calc(100% - 3px); background: radial-gradient(circle at 100% 0, transparent 9.5px, var(--barra) 10px); }
 .schede button {
   position: relative; border: 0; background: none; padding: 12px 0 10px; min-height: 64px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
@@ -92,9 +88,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .schede .ico svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .schede .etich { font-size: 11px; letter-spacing: .02em; transition: transform .38s, color .2s; }
 .schede button.attiva { color: var(--barra-attiva); }
-.schede button.attiva .ico { transform: translateY(-22px) scale(1.12); }
-.schede button.attiva .ico svg { stroke-width: 1.9; }
-.schede button.attiva .etich { font-weight: 700; transform: translateY(6px); }
+.schede button.attiva .ico svg { stroke-width: 2; }
+.schede button.attiva .etich { font-weight: 700; }
 
 /* tasto "+" della spesa */
 .fab {
@@ -256,6 +251,14 @@ details summary { cursor: pointer; color: var(--primario); padding: 6px 0; }
 .sottotitolo { margin-top: -8px; color: var(--tenue); }
 .lista-azioni { display: grid; gap: 8px; }
 .azioni-modale { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+/* prezzo: tasti sempre visibili in fondo al foglio, Salva grande sotto il pollice */
+.azioni-prezzo {
+  position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom)); margin: 14px -16px calc(-16px - env(safe-area-inset-bottom));
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--carta); border-top: 1px solid var(--bordo);
+}
+.azioni-prezzo .salva { flex: 1; min-height: 52px; font-size: 17px; }
+.nota.proposta { margin-top: 0; }
+.storico summary { cursor: pointer; color: var(--primario); font-weight: 600; padding: 4px 0; }
 .elenco-scelta { max-height: 55vh; overflow: auto; }
 .testo-copia { width: 100%; height: 50vh; font-family: ui-monospace, monospace; font-size: 13px; }
 
