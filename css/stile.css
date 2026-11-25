@@ -345,3 +345,23 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
 .storico-prezzi td:last-child { text-align: right; }
 .voce-prezzo.stima { background: transparent; border: 1px dashed var(--bordo); color: var(--tenue); }
 .totale-spesa { color: var(--primario); }
+
+/* installazione sul telefono (Android e iPhone) */
+.invito-installa { background: var(--accento); color: var(--testo); }
+.azioni-invito { display: flex; align-items: center; gap: 4px; flex: none; }
+.passi { padding-left: 22px; margin: 6px 0 10px; }
+.passi li { padding: 3px 0; line-height: 1.45; }
+.simbolo { display: inline-block; padding: 0 5px; border: 1px solid var(--bordo); border-radius: 6px; font-size: 13px; }
+.pannello h3 { font-size: 15px; margin: 10px 0 0; }
+button.link {
+  border: 0; background: none; padding: 0; font: inherit; color: var(--primario);
+  text-decoration: underline; cursor: pointer;
+}
+
+/* iPhone/iPad: Safari ingrandisce la pagina se un campo ha il testo sotto i 16px */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: max(16px, 1em); }
+  .testo-copia { font-size: 16px; }
+}
+/* niente evidenziazione grigia al tocco */
+button, a, [data-azione] { -webkit-tap-highlight-color: transparent; }

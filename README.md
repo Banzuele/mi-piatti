@@ -1,5 +1,7 @@
 # Mi-Piatti
 
+> **Regola del progetto: ogni modifica deve funzionare sia su Android (Chrome) sia su iPhone/iPad (Safari, app installata dalla schermata Home).** Vedi [`CLAUDE.md`](CLAUDE.md) per la lista dei controlli.
+
 App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena, da sabato a venerdì) e la **lista della spesa** ordinata come i reparti Esselunga. Menù e spesa sono condivisi tra due telefoni in tempo reale e funzionano anche senza rete.
 
 ## Cosa fa
@@ -33,8 +35,22 @@ Dopo un paio di minuti riapri l'app: chiederà di accedere con Google. Ognuno de
 
 ## Installare sul telefono
 
-Android: apri l'indirizzo in **Chrome** > menu ⋮ > **Installa app** (o *Aggiungi a schermata Home*).
-iPhone (in seguito): apri in **Safari** > Condividi > **Aggiungi alla schermata Home**.
+Le stesse istruzioni sono nell'app: scheda **Altro** > *Installa sul telefono* (e un invito in cima al Menù finché l'app non è installata).
+
+**Android**: apri l'indirizzo in **Chrome** > menu ⋮ > **Installa app** (o *Aggiungi a schermata Home*). Se Chrome lo permette, nell'app compare direttamente il pulsante *Installa*.
+
+**iPhone / iPad**: apri l'indirizzo in **Safari** > **Condividi** (su iOS 26 è nel menu ⋯) > **Aggiungi alla schermata Home** > lascia attivo *Apri come app web* > **Aggiungi**. Poi apri l'app dall'icona e accedi con Google lì dentro: l'app installata ha un accesso separato da Safari.
+
+### Accesso Google su iPhone (passo da fare una volta)
+
+Su iPhone il popup di Google di Firebase non funziona bene (soprattutto nell'app installata), perché Safari tiene separati i dati di `mi-piatti.firebaseapp.com`. Su iOS l'app quindi va direttamente da Google e torna su `https://banzuele.github.io/mi-piatti/`. Google accetta il ritorno solo se l'indirizzo è autorizzato:
+
+1. Apri <https://console.cloud.google.com/apis/credentials?project=mi-piatti>.
+2. In *ID client OAuth 2.0* apri **Web client (auto created by Google Service)**.
+3. In **Origini JavaScript autorizzate** aggiungi `https://banzuele.github.io`.
+4. In **URI di reindirizzamento autorizzati** aggiungi `https://banzuele.github.io/mi-piatti/` (con la `/` finale), poi **Salva**. Può servire qualche minuto.
+
+L'ID di quel client è in `config.js` (`googleClientId`). Se l'accesso su iPhone non va, nella schermata di accesso c'è *Prova l'altro metodo* (il popup classico). Su Android resta il popup classico.
 
 ## Ricette e alimenti
 
@@ -60,5 +76,7 @@ node --test test/*.test.mjs   # test della logica (menù, festività, spesa, spo
 | `js/archivio.js` | Firebase (Firestore + Google) oppure solo locale |
 | `js/app.js` | interfaccia |
 | `sw.js` | funzionamento offline |
+| `strumenti/genera_icone.cjs` | icone (compresa quella per iPhone, `icona-180.png`) |
+| `strumenti/genera_splash.cjs` | schermate di avvio per iPhone (`icons/splash/`) e i loro `<link>` in `index.html` |
 
 Il service worker prende i file dalla rete quando c'è, e dalla copia salvata quando manca. Se aggiungi file all'app, inseriscili nell'elenco `FILE` di `sw.js` e aumenta `VERSIONE`.

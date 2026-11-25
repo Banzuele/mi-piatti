@@ -1,12 +1,12 @@
 // Service worker: l'app funziona anche senza rete (es. al supermercato).
 // Cambiare VERSIONE a ogni rilascio: i telefoni riscaricano tutti i file.
-const VERSIONE = "mi-piatti-v10";
+const VERSIONE = "mi-piatti-v11";
 const FILE = [
   "./", "index.html", "manifest.webmanifest", "config.js",
   "css/stile.css",
   "js/intro.js", "js/app.js", "js/archivio.js", "js/calendario.js", "js/pianificatore.js", "js/spesa.js", "js/prezzi.js",
   "data/ricette.json", "data/alimenti.json",
-  "icons/icona-192.png", "icons/icona-512.png", "icons/icona.svg", "icons/favicon-32.png",
+  "icons/icona-180.png", "icons/icona-192.png", "icons/icona-512.png", "icons/icona.svg", "icons/favicon-32.png",
 ];
 
 self.addEventListener("install", (e) => {

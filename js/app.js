@@ -1,5 +1,5 @@
 import { firebaseConfig, famiglia } from "../config.js";
-import { creaArchivio } from "./archivio.js";
+import { creaArchivio, suIOS, installata } from "./archivio.js";
 import {
   oggiISO, inizioSettimana, aggiungiGiorni, giorniSettimana, giornoSettimana,
   GIORNI_LUNGHI, formattaGiornoMese, intervalloSettimana, infoGiorno, festivita,
@@ -200,7 +200,61 @@ function vistaAccesso() {
     <h2>Benvenuti in Mi-Piatti</h2>
     <p>Accedete con il vostro account Google per condividere menù e spesa.</p>
     <button class="btn primario" data-azione="accedi">Accedi con Google</button>
+    ${suIOS() ? `<p class="nota">Problemi ad accedere? <button class="link" data-azione="accedi-classico">Prova l'altro metodo</button></p>` : ""}
+    ${installata() ? "" : `<p class="nota">Consiglio: prima installa l'app sul telefono, poi accedi dall'icona.
+      <button class="link" data-azione="installa">Come si installa</button></p>`}
   </div>`;
+}
+
+// ---------------------------------------------------------------- installazione
+// Android: Chrome offre "Installa app" (e l'evento beforeinstallprompt per un pulsante).
+// iPhone: solo a mano da Safari, Condividi > Aggiungi alla schermata Home.
+let richiestaInstalla = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  richiestaInstalla = e;
+  disegna();
+});
+window.addEventListener("appinstalled", () => { richiestaInstalla = null; disegna(); });
+
+const NASCONDI_INSTALLA = "mipiatti:nascondi-installa";
+function invitoInstalla() {
+  if (installata()) return "";
+  try { if (localStorage.getItem(NASCONDI_INSTALLA)) return ""; } catch { /* niente */ }
+  return `<div class="banner invito-installa">
+    <span>📲 Installa Mi-Piatti sul telefono: si apre come un'app e funziona anche senza rete.</span>
+    <span class="azioni-invito">
+      <button class="btn piccolo primario" data-azione="installa">${richiestaInstalla ? "Installa" : "Come"}</button>
+      <button class="btn-ico piccolo" data-azione="nascondi-installa" aria-label="Non mostrare più">✕</button>
+    </span>
+  </div>`;
+}
+
+function istruzioniIOS() {
+  return `<ol class="passi">
+    <li>Apri <strong>banzuele.github.io/mi-piatti</strong> con <strong>Safari</strong>.</li>
+    <li>Tocca <strong>Condividi</strong> <span class="simbolo" aria-hidden="true">⬆︎</span>
+      (il quadrato con la freccia; su iOS 26 è nel menu <strong>⋯</strong> in basso).</li>
+    <li>Scorri e scegli <strong>Aggiungi alla schermata Home</strong>. Se compare, lascia attivo <strong>Apri come app web</strong>.</li>
+    <li>Tocca <strong>Aggiungi</strong>, poi apri Mi-Piatti dall'icona con i tre piatti.</li>
+    <li>Accedi con Google <strong>dentro l'app</strong>: l'app installata non condivide l'accesso con Safari.</li>
+  </ol>`;
+}
+function istruzioniAndroid() {
+  return `<ol class="passi">
+    <li>Apri <strong>banzuele.github.io/mi-piatti</strong> con <strong>Chrome</strong>.</li>
+    <li>Tocca il menu <strong>⋮</strong> in alto a destra.</li>
+    <li>Scegli <strong>Installa app</strong> (o <strong>Aggiungi a schermata Home</strong>), poi <strong>Installa</strong>.</li>
+  </ol>`;
+}
+function vistaInstalla(pannello) {
+  if (installata()) return pannello ? `<p>✅ Stai usando l'app installata.</p>` : "";
+  const ios = suIOS();
+  return `${!pannello ? "<h2>Installa sul telefono</h2>" : ""}
+    ${richiestaInstalla ? `<button class="btn primario largo" data-azione="installa-ora">Installa Mi-Piatti</button>` : ""}
+    <h3>${ios ? "iPhone e iPad" : "Android"}</h3>
+    ${ios ? istruzioniIOS() : istruzioniAndroid()}
+    <details><summary>${ios ? "Android" : "iPhone e iPad"}</summary>${ios ? istruzioniAndroid() : istruzioniIOS()}</details>`;
 }
 
 function navSettimana() {
@@ -226,7 +280,7 @@ function vistaMenu() {
   const P = piano();
   const oggi = oggiISO();
   const haPasti = giorni.some((d) => PASTI.some((p) => P[chiavePasto(d, p)]));
-  let h = navSettimana();
+  let h = navSettimana() + invitoInstalla();
   if (S.scambio) {
     const [d, p] = S.scambio.split("_");
     h += `<div class="banner">Tocca un altro ${PASTO[p].nome.toLowerCase()} da scambiare con quello di ${formattaGiornoMese(d)}.
@@ -1050,6 +1104,11 @@ function vistaAltro() {
   </section>
 
   <section class="pannello">
+    <h2>Installa sul telefono</h2>
+    ${vistaInstalla(true)}
+  </section>
+
+  <section class="pannello">
     <h2>Giorni a casa</h2>
     <p class="nota">Ferie e giorni con la mensa chiusa: il pranzo diventa per tutta la famiglia (×${num(I.moltFamiglia)}). Le festività nazionali sono già incluse.</p>
     <form class="form-casa" data-azione="aggiungi-casa">
@@ -1113,7 +1172,19 @@ document.addEventListener("click", async (e) => {
   const { azione, chiave, id } = el.dataset;
   switch (azione) {
     case "accedi":
-      try { await archivio.accedi(); } catch (err) { avviso(`Accesso non riuscito: ${err.message}`, 5000); }
+    case "accedi-classico":
+      try { await archivio.accedi({ classico: azione === "accedi-classico" }); } catch (err) { avviso(`Accesso non riuscito: ${err.message}`, 5000); }
+      break;
+    case "installa":
+      if (richiestaInstalla) { richiestaInstalla.prompt(); richiestaInstalla = null; break; }
+      apriModale(`${vistaInstalla(false)}<div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
+      break;
+    case "installa-ora":
+      if (richiestaInstalla) { richiestaInstalla.prompt(); richiestaInstalla = null; }
+      break;
+    case "nascondi-installa":
+      try { localStorage.setItem(NASCONDI_INSTALLA, "1"); } catch { /* niente */ }
+      disegna();
       break;
     case "esci": await archivio.esci(); break;
     case "sett": S.settimana = aggiungiGiorni(S.settimana, Number(el.dataset.delta)); disegna(); break;

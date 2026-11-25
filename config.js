@@ -16,6 +16,9 @@ export const firebaseConfig = {
   storageBucket: "mi-piatti.firebasestorage.app",
   messagingSenderId: "1038769438827",
   appId: "1:1038769438827:web:d217538fed24c345aa712e",
+  // Accesso Google su iPhone/iPad (vedi README, "Installare su iPhone"):
+  // è il "Web client ID" di Authentication > Google > Configurazione SDK web.
+  googleClientId: "1038769438827-i3b3g89a7ce28kccueubnshral5fliub.apps.googleusercontent.com",
 };
 
 // Esempio di come deve apparire dopo averlo incollato:
