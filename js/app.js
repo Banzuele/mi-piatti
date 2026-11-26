@@ -207,7 +207,7 @@ function impostaTema(t) {
   else document.documentElement.dataset.tema = tema;
   // colore della barra di stato del telefono
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
-    m.content = tema === "scuro" ? "#121614" : tema === "chiaro" ? "#f6f4ef" : (m.dataset.scuro || m.dataset.chiaro);
+    m.content = tema === "scuro" ? "#2b5a44" : tema === "chiaro" ? "#2f6b4f" : (m.dataset.scuro || m.dataset.chiaro);
   });
 }
 
@@ -824,7 +824,7 @@ function scegli(k, filtro = "") {
   apriModale(`<h2>Scegli ${PASTO[pasto].nome.toLowerCase()} · ${formattaGiornoMese(data)}</h2>
     <input type="search" id="cerca-scelta" placeholder="Cerca…" value="${esc(filtro)}" data-chiave="${k}">
     <div class="elenco-scelta">${elenco.map(({ r, adatta }) => `
-      <button class="riga-ricetta ${adatta ? "" : "sconsigliata"}" data-azione="scelto" data-chiave="${k}" data-id="${esc(r.id)}">
+      <button class="riga-ricetta ${esc(r.pasto)} ${adatta ? "" : "sconsigliata"}" data-azione="scelto" data-chiave="${k}" data-id="${esc(r.id)}">
         <span>${esc(r.nome)}</span>
         <small>${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min${adatta ? "" : " · fuori stagione o deperibilità"}</small>
       </button>`).join("")}
@@ -1173,7 +1173,7 @@ function vistaSpesa() {
   const presi = voci.filter((v) => v.fatto).length;
   const negozio = modalitaNegozio();
   const daPrezzare = senzaPrezzo(tutte).length;
-  h += `<div class="azioni-spesa">
+  h += `<div class="area-comandi"><div class="azioni-spesa">
     ${"share" in navigator ? `<button class="btn piccolo" data-azione="condividi-spesa">📤 Condividi</button>` : ""}
     <button class="btn piccolo" data-azione="copia-spesa">📋 Copia</button>
     <button class="btn piccolo" data-azione="azzera-spunte">↺ Togli le spunte</button>
@@ -1186,7 +1186,7 @@ function vistaSpesa() {
     <label class="interruttore"><input type="checkbox" data-azione="negozio" ${negozio ? "checked" : ""}> 🛒 Modalità negozio</label>
     ${daPrezzare ? `<button class="btn piccolo primario" data-azione="conferma-prezzi">💶 Conferma i prezzi (${daPrezzare})</button>` : ""}
   </div>
-  ${negozio ? `<p class="nota">Spunta e vai avanti: i prezzi li confermi tutti insieme alla fine.</p>` : ""}`;
+  ${negozio ? `<p class="nota">Spunta e vai avanti: i prezzi li confermi tutti insieme alla fine.</p>` : ""}</div>`;
   if (!tutte.length) {
     h += `<div class="vuoto"><p>Nessun pasto in questa settimana, quindi niente da comprare.</p>
       <button class="btn" data-azione="vai-menu">Vai al menù</button></div>`;
@@ -1273,7 +1273,7 @@ const NOMI_STAGIONI = { primavera: "🌸 Primavera", estate: "☀️ Estate", au
 function vistaRicette() {
   const filtri = [["tutti", "Tutte"], ["pranzo", "Pranzi"], ["cena", "Cene"]];
   return `<div class="barra-fissa">
-    <div class="riga-stato">${statoSync()}</div>
+    <div class="riga-titolo"><strong>Ricette</strong>${statoSync()}</div>
     <input type="search" id="cerca-ricette" placeholder="Cerca una ricetta o un ingrediente…" value="${esc(S.cercaRicetta)}">
     <div class="chip-riga">${filtri.map(([v, t]) =>
       `<button class="chip ${S.filtroPasto === v ? "attivo" : ""}" data-azione="filtro-pasto" data-valore="${v}">${t}</button>`).join("")}</div>
@@ -1295,7 +1295,7 @@ function disegnaListaRicette() {
       || r.ingredienti.some((i) => S.alimentiPerId.get(i.id)?.nome.toLowerCase().includes(f))));
   elenco.sort((a, b) => (a.nascosta ? 1 : 0) - (b.nascosta ? 1 : 0));
   el.innerHTML = `<p class="nota">${elenco.length} ricette</p>` + elenco.map((r) => `
-    <button class="riga-ricetta ${entroTempi(r, imp()) && !r.nascosta ? "" : "sconsigliata"}" data-azione="vedi-ricetta" data-id="${esc(r.id)}">
+    <button class="riga-ricetta ${esc(r.pasto)} ${entroTempi(r, imp()) && !r.nascosta ? "" : "sconsigliata"}" data-azione="vedi-ricetta" data-id="${esc(r.id)}">
       <span>${PASTO[r.pasto].ico} ${esc(r.nome)}${r.nascosta ? ' <small class="etichetta">non proposta</small>' : r.mia ? ' <small class="etichetta">vostra</small>' : r.modificata ? ' <small class="etichetta">modificata</small>' : ""}</span>
       <small>${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoPrep}/${r.tempoTotale} min · ${r.stagioni.length === 4 ? "tutto l'anno" : esc(r.stagioni.join(", "))}</small>
     </button>`).join("");
@@ -1318,7 +1318,7 @@ function vistaAltro() {
   const nomeTipo = { ferie: "Ferie", mensa: "Mensa chiusa", altro: "A casa" };
   const feste = [...festivita(anno), ...festivita(anno + 1)].filter((f) => f.data >= oggi).slice(0, 8);
   const tema = leggiTema();
-  return `<div class="riga-stato">${statoSync()}</div>
+  return `<div class="barra-fissa"><div class="riga-titolo"><strong>Altro</strong>${statoSync()}</div></div>
   <section class="pannello">
     <h2>Tema</h2>
     <div class="scelta-tema" role="group" aria-label="Tema">${[["auto", "Automatico"], ["chiaro", "☀️ Chiaro"], ["scuro", "🌙 Scuro"]].map(([v, t]) =>
