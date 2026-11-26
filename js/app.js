@@ -1,10 +1,10 @@
 import { firebaseConfig, famiglia } from "../config.js";
 import { creaArchivio, suIOS, installata } from "./archivio.js";
 import {
-  oggiISO, inizioSettimana, aggiungiGiorni, giorniSettimana, giornoSettimana,
+  oggiISO, aggiungiGiorni, giorniSettimana, giornoSettimana,
   GIORNI_LUNGHI, formattaGiornoMese, intervalloSettimana, infoGiorno, festivita,
   usaSurgelato, IMPOSTAZIONI_PREDEFINITE, daISO, formattaBreve,
-  impostaGiornoInizio, leggiGiornoInizio, intervalloGiorni, stagione as stagioneDi,
+  impostaGiornoInizio, intervalloGiorni, lunediDi, lunediDopo, stagione as stagioneDi,
 } from "./calendario.js";
 import {
   PASTI, chiavePasto, generaPiano, scegliRicetta, entroTempi, surgelabile,
@@ -23,7 +23,7 @@ const S = {
   bozza: null, trascina: null, daRidisegnare: false,
   pasti: {}, spunte: {}, extra: {}, giorniCasa: {}, impostazioni: {}, prezzi: {}, prezzoAperto: null,
   utente: null, pronto: false, inAttesa: false, errore: null,
-  scheda: "menu", settimana: inizioSettimana(oggiISO()), scambio: null,
+  scheda: "menu", settimana: lunediDi(oggiISO()), oggiMostrato: false, scambio: null,
   mostraDispensa: true, cercaRicetta: "", filtroPasto: "tutti", filtroStagione: "tutte", aggiornando: false,
 };
 const archivio = creaArchivio(firebaseConfig, famiglia);
@@ -109,14 +109,10 @@ function pulisciRicetta(r) {
   };
 }
 
-// Giorno della spesa (Altro > Impostazioni): sposta l'inizio delle settimane.
-// Se si stava guardando la settimana in corso, si resta sulla settimana in corso.
+// Giorno della spesa (Altro > Impostazioni): conta per la deperibilità e il
+// surgelato. Menù e Lista restano comunque da lunedì a domenica.
 function applicaGiornoSpesa() {
-  const g = imp().giornoSpesa;
-  if (g === leggiGiornoInizio()) return;
-  const eraCorrente = S.settimana === inizioSettimana(oggiISO());
-  impostaGiornoInizio(g);
-  S.settimana = eraCorrente ? inizioSettimana(oggiISO()) : inizioSettimana(S.settimana);
+  impostaGiornoInizio(imp().giornoSpesa);
 }
 
 // ---------------------------------------------------------------- avvio
@@ -208,7 +204,31 @@ function disegna() {
   $contenuto.innerHTML = viste[S.scheda]();
   if (S.scheda === "ricette") disegnaListaRicette();
   disegnaStato();
+  if (!S.oggiMostrato && S.scheda === "menu") mostraOggi(true);
 }
+
+// All'apertura il Menù scorre al giorno di oggi e lo porta in cima allo schermo
+// (sabato e domenica, in fondo alla pagina, arrivano solo fin dove si può).
+function mostraOggi(avvio = false) {
+  const el = S.scheda === "menu" && document.querySelector(".giorno.oggi");
+  if (!el) return;
+  S.oggiMostrato = true;
+  if (avvio && window.scrollY > 0) return; // l'utente ha già scorso da solo
+  requestAnimationFrame(() => el.scrollIntoView({ block: "start" }));
+}
+// L'app installata spesso non si riavvia ma torna dallo sfondo (soprattutto su
+// iPhone): se è rimasta chiusa a lungo si riapre come nuova, sulla settimana e
+// sul giorno di oggi.
+let nascostaDa = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { nascostaDa = Date.now(); return; }
+  if (!nascostaDa || Date.now() - nascostaDa < 30 * 60 * 1000 || S.scheda !== "menu" || S.trascina || !$modale.hidden) return;
+  nascostaDa = 0;
+  S.settimana = lunediDi(oggiISO());
+  S.oggiMostrato = false;
+  window.scrollTo(0, 0);
+  disegna();
+});
 
 function vistaAccesso() {
   if (archivio.modalita !== "cloud") return "";
@@ -275,7 +295,7 @@ function vistaInstalla(pannello) {
 }
 
 function navSettimana() {
-  const corrente = inizioSettimana(oggiISO());
+  const corrente = lunediDi(oggiISO());
   const quale = S.settimana === corrente ? "Questa settimana"
     : S.settimana === aggiungiGiorni(corrente, 7) ? "Prossima settimana"
     : S.settimana === aggiungiGiorni(corrente, -7) ? "Settimana scorsa" : "Settimana";
@@ -353,11 +373,11 @@ function vistaMenu() {
 }
 
 function apriGenera() {
-  const corrente = inizioSettimana(oggiISO());
+  const corrente = lunediDi(oggiISO());
   const opzioni = [0, 7, 14, 21].map((n) => aggiungiGiorni(corrente, n));
   const scelta = opzioni.includes(S.settimana) ? S.settimana : opzioni[S.settimana < corrente ? 0 : 1];
   apriModale(`<h2>Genera il menù</h2>
-    <label>Da ${GIORNI_LUNGHI[leggiGiornoInizio()].toLowerCase()}
+    <label>Da lunedì
       <select id="gen-inizio">${opzioni.map((d) =>
         `<option value="${d}" ${d === scelta ? "selected" : ""}>${intervalloSettimana(d)}</option>`).join("")}</select>
     </label>
@@ -787,7 +807,7 @@ function vociSpesa() {
     fatto: !!S.spunte[`${S.settimana}_${v.id}`]?.fatto,
   }));
   const extra = Object.entries(S.extra)
-    .filter(([, e]) => e.settimana === S.settimana)
+    .filter(([, e]) => typeof e.settimana === "string" && lunediDopo(e.settimana) === S.settimana)
     .map(([id, e]) => {
       const a = typeof e.alimento === "string" ? S.alimentiPerId.get(e.alimento) : null;
       const unita = a?.unita || (["g", "ml", "pz"].includes(e.unita) ? e.unita : "pz");
@@ -1163,7 +1183,7 @@ function vistaAltro() {
         <select name="giornoSpesa">${[6, 0, 1, 2, 3, 4, 5].map((g) =>
           `<option value="${g}" ${g === I.giornoSpesa ? "selected" : ""}>${GIORNI_LUNGHI[g]}</option>`).join("")}</select>
       </label>
-      <p class="nota">La settimana del menù e della spesa parte da questo giorno. Deperibilità: Alta ${intervalloGiorni(0, 2)}, Media ${intervalloGiorni(3, 4)}, Bassa ${intervalloGiorni(5, 6)}.</p>
+      <p class="nota">Menù e Lista vanno sempre da lunedì a domenica; questo giorno serve per la deperibilità: Alta ${intervalloGiorni(0, 2)}, Media ${intervalloGiorni(3, 4)}, Bassa ${intervalloGiorni(5, 6)}.</p>
       <label>Porzioni pranzo feriale <input type="number" step="0.5" min="0.5" name="moltPranzoFeriale" value="${esc(I.moltPranzoFeriale)}"></label>
       <label>Porzioni famiglia (cene, weekend, feste) <input type="number" step="0.5" min="0.5" name="moltFamiglia" value="${esc(I.moltFamiglia)}"></label>
       <label>Preparazione attiva massima (min) <input type="number" min="5" name="maxPrep" value="${esc(I.maxPrep)}"></label>
@@ -1235,7 +1255,7 @@ document.addEventListener("click", async (e) => {
       break;
     case "esci": await archivio.esci(); break;
     case "sett": S.settimana = aggiungiGiorni(S.settimana, Number(el.dataset.delta)); disegna(); break;
-    case "sett-oggi": S.settimana = inizioSettimana(oggiISO()); disegna(); break;
+    case "sett-oggi": S.settimana = lunediDi(oggiISO()); disegna(); mostraOggi(); break;
     case "apri-genera": apriGenera(); break;
     case "genera": await genera(); break;
     case "pasto": apriPasto(chiave); break;
@@ -1300,7 +1320,7 @@ document.addEventListener("click", async (e) => {
     case "azzera-spunte": {
       const ops = [];
       for (const k of Object.keys(S.spunte)) if (k.startsWith(`${S.settimana}_`)) ops.push({ coll: "spunte", id: k, dati: null });
-      for (const [k, v] of Object.entries(S.extra)) if (v.settimana === S.settimana && v.fatto) ops.push({ coll: "extra", id: k, dati: { fatto: false } });
+      for (const [k, v] of Object.entries(S.extra)) if (typeof v.settimana === "string" && lunediDopo(v.settimana) === S.settimana && v.fatto) ops.push({ coll: "extra", id: k, dati: { fatto: false } });
       archivio.scriviMolti(ops);
       break;
     }

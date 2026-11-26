@@ -54,6 +54,17 @@ export function intervalloGiorni(da, a, inizio = giornoInizio) {
   return `${GIORNI[(inizio + da) % 7]}-${GIORNI[(inizio + a) % 7]}`;
 }
 
+// Menù e Lista mostrano sempre la settimana da lunedì a domenica,
+// qualunque sia il giorno della spesa (che conta per la deperibilità).
+export function lunediDi(iso) {
+  return aggiungiGiorni(iso, -((giornoSettimana(iso) + 6) % 7));
+}
+// Lunedì da cui si vede una settimana salvata prima della v15 (che poteva
+// partire dal giorno della spesa, es. sabato): il lunedì subito dopo.
+export function lunediDopo(iso) {
+  return aggiungiGiorni(iso, (8 - giornoSettimana(iso)) % 7);
+}
+
 export function giorniSettimana(sabato) {
   return Array.from({ length: 7 }, (_, i) => aggiungiGiorni(sabato, i));
 }

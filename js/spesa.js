@@ -1,4 +1,4 @@
-// Lista della spesa: somma gli ingredienti dei pasti di una settimana (di solito sab-ven),
+// Lista della spesa: somma gli ingredienti dei pasti di una settimana (da lunedì a domenica),
 // moltiplicati per le porzioni, ordinati come i reparti Esselunga.
 
 import { giorniSettimana, infoGiorno, usaSurgelato, GIORNI, giornoSettimana, IMPOSTAZIONI_PREDEFINITE } from "./calendario.js";
