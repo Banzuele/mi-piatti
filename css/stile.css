@@ -211,7 +211,6 @@ body::before {
 .barra-fissa .torna-oggi { background: var(--barra-attiva); color: var(--barra); }
 .barra-fissa .chip { background: var(--barra-chip); border-color: var(--barra-bordo); color: var(--barra-attiva); }
 .barra-fissa .chip.attivo { background: var(--barra-attiva); border-color: var(--barra-attiva); color: var(--barra); font-weight: 600; }
-.barra-fissa .riepilogo .chip.ko { background: #fde2df; border-color: #fde2df; color: #9a1f16; }
 .barra-fissa input[type="search"] { border-color: transparent; }
 .riga-titolo { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
 .riga-titolo strong { font-size: 19px; }
@@ -258,11 +257,29 @@ body::before {
 }
 .molt.forzato { background: var(--primario); color: var(--primario-testo); }
 
-/* riepilogo della settimana nella barra fissa del Menù */
-.barra-fissa .riepilogo, .barra-fissa .riepilogo.scorre { margin: 8px 0 0; }
-.riepilogo .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; }
-.riepilogo .chip.ko { border-color: var(--alta); color: var(--alta); font-weight: 600; }
-.riepilogo small { font-size: 11px; font-weight: 400; }
+/* riepilogo della settimana: scheda pastello sotto la barra del Menù, si chiude toccando il titolo */
+.riepilogo-sett { background: var(--p-salvia); border: 1px solid var(--bordo); border-radius: var(--raggio); margin-bottom: 12px; overflow: hidden; }
+.testa-riep {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 0; background: none; color: var(--testo); font: inherit; font-size: 14px; font-weight: 600; text-align: left;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.testa-riep > span:first-child { flex: 1; }
+.freccia-riep { color: var(--tenue); font-size: 14px; }
+.avviso-riep { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: #fde2df; color: #9a1f16; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.griglia-riep { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px 8px; padding: 0 12px 8px; }
+.tipo-riep { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tenue); min-width: 0; }
+.tipo-riep .ic { width: 20px; height: 20px; flex: none; }
+.tipo-riep b { color: var(--testo); font-size: 16px; }
+.tipo-riep span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tipo-riep.ko, .tipo-riep.ko b { color: var(--alta); font-weight: 600; }
+.tipo-riep small { font-size: 11px; font-weight: 400; }
+.piede-riep { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 10px; border-top: 1px solid var(--bordo); font-size: 14px; color: var(--tenue); }
+.piede-riep .ic { width: 18px; height: 18px; vertical-align: -.25em; }
+.costo-riep { color: var(--primario); font-size: 18px; white-space: nowrap; }
+.testa-riep .costo-riep { font-size: 15px; }
+.costo-riep small { font-size: 12px; color: var(--tenue); font-weight: 400; }
+.costo-riep.ko { color: var(--alta); }
 
 .banner {
   display: flex; align-items: center; gap: 8px; justify-content: space-between;

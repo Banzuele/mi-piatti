@@ -364,28 +364,44 @@ function navSettimana(fissa = false, sotto = "") {
 }
 
 // ---------------------------------------------------------------- menù
-// Riepilogo della settimana, in alto nel Menù: piatti per tipo (rosso se fuori
-// dai limiti scelti in Altro) e costo previsto della lista rispetto al budget.
+// Riepilogo della settimana, sotto la barra del Menù: piatti per tipo (rosso se
+// fuori dai limiti scelti in Altro) e costo previsto rispetto al budget. Si
+// chiude e si riapre toccando il titolo; la scelta vale per questo telefono.
+const CHIAVE_RIEPILOGO = "mipiatti:riepilogo-chiuso";
+function riepilogoChiuso() {
+  try { return localStorage.getItem(CHIAVE_RIEPILOGO) === "1"; } catch { return false; }
+}
+const NOME_BREVE_TIPO = { "Carne bianca": "Carne b.", "Carne rossa": "Carne r.", Nessuna: "Vegetar." };
 function riepilogoSettimana(giorni) {
   const I = imp();
   const regole = regoleSettimana(I);
   const c = contaTipiSettimana(piano(), S.ricettePerId, giorni[0], chiaviAvanzi());
-  const chip = TIPI_PIATTO.filter((t) => c[t.proteina] > 0 || regole[t.proteina].min > 0).map((t) => {
+  let fuori = 0;
+  const tipi = TIPI_PIATTO.filter((t) => c[t.proteina] > 0 || regole[t.proteina].min > 0).map((t) => {
     const { min, max } = regole[t.proteina];
     const n = c[t.proteina];
     const ko = n < min || n > max;
+    if (ko) fuori++;
     const titolo = `${t.proteina}: ${n} (${min ? `minimo ${min}` : ""}${min && max < 14 ? ", " : ""}${max < 14 ? `massimo ${max}` : ""})`;
-    return `<span class="chip ${ko ? "ko" : ""}" title="${esc(titolo)}">${ICONA_PROTEINA[t.proteina]} ${n}${ko ? (n < min ? ` <small>min ${min}</small>` : ` <small>max ${max}</small>`) : ""}</span>`;
+    return `<div class="tipo-riep${ko ? " ko" : ""}" title="${esc(titolo)}">${ICONA_PROTEINA[t.proteina]}<b>${n}</b>
+      <span>${esc(NOME_BREVE_TIPO[t.proteina] || t.proteina)}${ko ? ` <small>${n < min ? `min ${min}` : `max ${max}`}</small>` : ""}</span></div>`;
   });
   // costo dei piatti (dosi usate), lo stesso che il menù confronta con il budget
   const tot = costoSettimana(piano(), giorni[0], {
     costi: costiRicette(), giorniCasa: S.giorniCasa, imp: I, porzioni: porzioniForzate(),
   });
   const budget = Number(I.budget) > 0 ? Number(I.budget) : 0;
-  if (tot) {
-    chip.push(`<span class="chip ${budget && tot > budget ? "ko" : ""}" title="Costo dei piatti della settimana (dosi usate)">${ico("euro")} ≈ ${Math.round(tot)} €${budget ? ` / ${budget} €` : ""}</span>`);
-  }
-  return `<div class="chip-riga scorre riepilogo" aria-label="Riepilogo della settimana">${chip.join("")}</div>`;
+  const oltre = budget && tot > budget;
+  const costo = tot ? `<b class="costo-riep${oltre ? " ko" : ""}">≈ ${Math.round(tot)} €${budget ? ` <small>/ ${budget} €</small>` : ""}</b>` : "";
+  const chiuso = riepilogoChiuso();
+  return `<section class="riepilogo-sett${chiuso ? " chiuso" : ""}" aria-label="Riepilogo della settimana">
+    <button class="testa-riep" data-azione="riepilogo" aria-expanded="${!chiuso}">
+      <span>Riepilogo della settimana${fuori ? ` <span class="avviso-riep">${fuori} fuori dai limiti</span>` : ""}</span>
+      ${chiuso ? costo : ""}<span class="freccia-riep" aria-hidden="true">${chiuso ? "▾" : "▴"}</span>
+    </button>
+    ${chiuso ? "" : `<div class="griglia-riep">${tipi.join("")}</div>
+    ${tot ? `<div class="piede-riep"><span>${ico("euro")} Costo previsto dei piatti</span>${costo}</div>` : ""}`}
+  </section>`;
 }
 
 // Promemoria per domani, in cima al giorno di oggi. Si spengono in Altro
@@ -419,7 +435,7 @@ function vistaMenu() {
   const P = piano();
   const oggi = oggiISO();
   const haPasti = giorni.some((d) => PASTI.some((p) => P[chiavePasto(d, p)] || S.pasti[chiavePasto(d, p)]?.avanzi));
-  let h = navSettimana(true, haPasti ? riepilogoSettimana(giorni) : "") + invitoInstalla();
+  let h = navSettimana(true) + (haPasti ? riepilogoSettimana(giorni) : "") + invitoInstalla();
   if (S.scambio) {
     const [d, p] = S.scambio.split("_");
     h += `<div class="banner">Tocca un altro ${PASTO[p].nome.toLowerCase()} da scambiare con quello di ${formattaGiornoMese(d)}.
@@ -1713,6 +1729,10 @@ document.addEventListener("click", async (e) => {
       break;
     }
     case "copia-spesa": await copiaTesto(testoSpesa()); break;
+    case "riepilogo":
+      try { if (riepilogoChiuso()) localStorage.removeItem(CHIAVE_RIEPILOGO); else localStorage.setItem(CHIAVE_RIEPILOGO, "1"); } catch { /* niente */ }
+      disegna();
+      break;
     case "dispensa": S.mostraDispensa = !S.mostraDispensa; disegna(); break;
     case "negozio": {
       const on = !modalitaNegozio();
