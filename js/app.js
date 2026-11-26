@@ -364,9 +364,10 @@ function navSettimana(fissa = false, sotto = "") {
 }
 
 // ---------------------------------------------------------------- menù
-// Riepilogo della settimana, sotto la barra del Menù: piatti per tipo (rosso se
-// fuori dai limiti scelti in Altro) e costo previsto rispetto al budget. Si
-// chiude e si riapre toccando il titolo; la scelta vale per questo telefono.
+// Riepilogo della settimana, attaccato sotto la barra del Menù (resta fisso con
+// lei): piatti per tipo (rosso se fuori dai limiti scelti in Altro) e costo
+// previsto rispetto al budget. La freccia in fondo lo nasconde o lo mostra; la
+// scelta vale per questo telefono.
 const CHIAVE_RIEPILOGO = "mipiatti:riepilogo-chiuso";
 function riepilogoChiuso() {
   try { return localStorage.getItem(CHIAVE_RIEPILOGO) === "1"; } catch { return false; }
@@ -394,13 +395,14 @@ function riepilogoSettimana(giorni) {
   const oltre = budget && tot > budget;
   const costo = tot ? `<b class="costo-riep${oltre ? " ko" : ""}">≈ ${Math.round(tot)} €${budget ? ` <small>/ ${budget} €</small>` : ""}</b>` : "";
   const chiuso = riepilogoChiuso();
+  // attaccato sotto la barra verde; la freccia a tutta larghezza lo nasconde o lo mostra
   return `<section class="riepilogo-sett${chiuso ? " chiuso" : ""}" aria-label="Riepilogo della settimana">
-    <button class="testa-riep" data-azione="riepilogo" aria-expanded="${!chiuso}">
-      <span>Riepilogo della settimana${fuori ? ` <span class="avviso-riep">${fuori} fuori dai limiti</span>` : ""}</span>
-      ${chiuso ? costo : ""}<span class="freccia-riep" aria-hidden="true">${chiuso ? "▾" : "▴"}</span>
-    </button>
     ${chiuso ? "" : `<div class="griglia-riep">${tipi.join("")}</div>
     ${tot ? `<div class="piede-riep"><span>${ico("euro")} Costo previsto dei piatti</span>${costo}</div>` : ""}`}
+    <button class="freccia-riep${fuori ? " ko" : ""}" data-azione="riepilogo" aria-expanded="${!chiuso}"
+      aria-label="${chiuso ? "Mostra" : "Nascondi"} il riepilogo della settimana${fuori ? ` (${fuori} fuori dai limiti)` : ""}">
+      <svg viewBox="0 0 24 12" aria-hidden="true"><path d="${chiuso ? "M3 3l9 6 9-6" : "M3 9l9-6 9 6"}"/></svg>
+    </button>
   </section>`;
 }
 
@@ -435,7 +437,7 @@ function vistaMenu() {
   const P = piano();
   const oggi = oggiISO();
   const haPasti = giorni.some((d) => PASTI.some((p) => P[chiavePasto(d, p)] || S.pasti[chiavePasto(d, p)]?.avanzi));
-  let h = navSettimana(true) + (haPasti ? riepilogoSettimana(giorni) : "") + invitoInstalla();
+  let h = navSettimana(true, haPasti ? riepilogoSettimana(giorni) : "") + invitoInstalla();
   if (S.scambio) {
     const [d, p] = S.scambio.split("_");
     h += `<div class="banner">Tocca un altro ${PASTO[p].nome.toLowerCase()} da scambiare con quello di ${formattaGiornoMese(d)}.
