@@ -170,7 +170,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .btn-ico.piccolo { width: 32px; height: 32px; font-size: 14px; background: none; color: var(--tenue); }
 
-.nav-sett { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.nav-sett { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+/* frecce piccole senza cerchio, ma con un'area di tocco di 40px */
+.freccia-sett {
+  flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: none;
+  color: inherit; font-size: 30px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.freccia-sett:active { background: var(--barra-chip); }
+.riga-quale { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 6px; }
+.riga-quale small { white-space: nowrap; }
+.riga-quale .stato-sync { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+/* con "Sincronizzato" basta la nuvola (il testo resta per i lettori di schermo) */
+.stato-sync .solo-icona { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* avanzamento della spesa nella barra */
+.avanz-spesa { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 14px; color: var(--barra-ico); }
+.barra-avanz { flex: 1; height: 6px; border-radius: 3px; background: var(--barra-chip); overflow: hidden; }
+.barra-avanz i { display: block; height: 100%; background: var(--ambra); border-radius: 3px; transition: width .25s; }
+.avanz-spesa .totale-spesa { color: var(--barra-attiva); font-size: 16px; white-space: nowrap; }
 /* barra in alto sempre visibile mentre si scorre (Menù e Ricette), sotto il notch */
 .barra-fissa {
   position: sticky; top: 0; z-index: 5; background: var(--barra); color: var(--barra-attiva);
@@ -190,11 +206,11 @@ body::before {
 /* elementi sopra il verde della barra */
 .barra-fissa .btn-ico { background: var(--barra-pastiglia); color: var(--barra-attiva); }
 .barra-fissa .titolo-sett small, .barra-fissa .stato-sync { color: var(--barra-ico); }
+.barra-fissa .freccia-sett { color: var(--barra-attiva); }
 .barra-fissa .stato-sync.carica { color: var(--barra-attiva); }
 .barra-fissa .torna-oggi { background: var(--barra-attiva); color: var(--barra); }
 .barra-fissa .chip { background: var(--barra-chip); border-color: var(--barra-bordo); color: var(--barra-attiva); }
 .barra-fissa .chip.attivo { background: var(--barra-attiva); border-color: var(--barra-attiva); color: var(--barra); font-weight: 600; }
-.barra-fissa .riepilogo .chip.ko { background: #fde2df; border-color: #fde2df; color: #9a1f16; }
 .barra-fissa input[type="search"] { border-color: transparent; }
 .riga-titolo { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
 .riga-titolo strong { font-size: 19px; }
@@ -202,8 +218,9 @@ body::before {
 .barra-fissa .chip-riga:last-child { margin-bottom: 0; }
 .barra-fissa input[type="search"] { margin: 6px 0 0; }
 .scelta-tema { display: flex; gap: 6px; flex-wrap: wrap; }
-.titolo-sett { flex: 1; text-align: center; display: flex; flex-direction: column; cursor: pointer; }
-.titolo-sett small { color: var(--tenue); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.titolo-sett { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; line-height: 1.2; cursor: pointer; }
+.titolo-sett strong { font-size: 18px; }
+.titolo-sett small { color: var(--tenue); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 
 .giorno {
   background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio);
@@ -240,11 +257,29 @@ body::before {
 }
 .molt.forzato { background: var(--primario); color: var(--primario-testo); }
 
-/* riepilogo della settimana nella barra fissa del Menù */
-.barra-fissa .riepilogo, .barra-fissa .riepilogo.scorre { margin: 8px 0 0; }
-.riepilogo .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; }
-.riepilogo .chip.ko { border-color: var(--alta); color: var(--alta); font-weight: 600; }
-.riepilogo small { font-size: 11px; font-weight: 400; }
+/* riepilogo della settimana: scheda pastello sotto la barra del Menù, si chiude toccando il titolo */
+.riepilogo-sett { background: var(--p-salvia); border: 1px solid var(--bordo); border-radius: var(--raggio); margin-bottom: 12px; overflow: hidden; }
+.testa-riep {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 0; background: none; color: var(--testo); font: inherit; font-size: 14px; font-weight: 600; text-align: left;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.testa-riep > span:first-child { flex: 1; }
+.freccia-riep { color: var(--tenue); font-size: 14px; }
+.avviso-riep { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: #fde2df; color: #9a1f16; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.griglia-riep { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px 8px; padding: 0 12px 8px; }
+.tipo-riep { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tenue); min-width: 0; }
+.tipo-riep .ic { width: 20px; height: 20px; flex: none; }
+.tipo-riep b { color: var(--testo); font-size: 16px; }
+.tipo-riep span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tipo-riep.ko, .tipo-riep.ko b { color: var(--alta); font-weight: 600; }
+.tipo-riep small { font-size: 11px; font-weight: 400; }
+.piede-riep { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 10px; border-top: 1px solid var(--bordo); font-size: 14px; color: var(--tenue); }
+.piede-riep .ic { width: 18px; height: 18px; vertical-align: -.25em; }
+.costo-riep { color: var(--primario); font-size: 18px; white-space: nowrap; }
+.testa-riep .costo-riep { font-size: 15px; }
+.costo-riep small { font-size: 12px; color: var(--tenue); font-weight: 400; }
+.costo-riep.ko { color: var(--alta); }
 
 .banner {
   display: flex; align-items: center; gap: 8px; justify-content: space-between;
@@ -256,16 +291,23 @@ body::before {
 .centro { text-align: center; }
 
 /* spesa */
-.barra-spesa { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 14px; color: var(--tenue); }
 .interruttore { display: flex; gap: 6px; align-items: center; }
 .reparto {
   display: inline-block; margin: 16px 0 6px; padding: 3px 12px; border-radius: 999px;
   background: var(--p-salvia); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--primario);
 }
-/* comandi della spesa raccolti in un riquadro pastello */
-.area-comandi { background: var(--p-menta); border: 1px solid var(--bordo); border-radius: var(--raggio); padding: 10px 12px 4px; margin-bottom: 6px; }
-.area-comandi .azioni-spesa { margin: 0 0 8px; }
-.area-comandi .barra-spesa { margin-bottom: 6px; }
+/* comandi della spesa: tasti uguali a icona sotto la barra (Dispensa e Negozio si accendono) */
+.strumenti-spesa { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.strumento {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 60px; padding: 8px 2px; border: 1px solid var(--bordo); border-radius: 10px;
+  background: var(--carta); color: var(--testo); font: inherit; font-size: 12px; line-height: 1.15;
+  text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.strumento .ic { width: 22px; height: 22px; }
+.strumento.acceso { background: var(--p-salvia); border-color: var(--primario); font-weight: 600; }
+.strumento:active { transform: scale(.97); }
+.btn.conferma-prezzi { text-align: center; margin: 4px 0; }
 ul.spesa { list-style: none; margin: 0; padding: 0; background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio); }
 ul.spesa li { display: flex; align-items: center; border-top: 1px solid var(--bordo); }
 ul.spesa li:first-child { border-top: 0; }
