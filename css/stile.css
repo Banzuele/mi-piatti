@@ -19,8 +19,9 @@
   --barra-pastiglia: rgba(255, 255, 255, .22);
   color-scheme: light;
 }
+/* tema: automatico (come il telefono), oppure chiaro o scuro scelto in Altro */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema="chiaro"]) {
     --sfondo: #121614;
     --carta: #1c221f;
     --testo: #e7ece9;
@@ -36,6 +37,22 @@
     --barra-pastiglia: rgba(255, 255, 255, .2);
     color-scheme: dark;
   }
+}
+:root[data-tema="scuro"] {
+  --sfondo: #121614;
+  --carta: #1c221f;
+  --testo: #e7ece9;
+  --tenue: #9aa59f;
+  --bordo: #2d3531;
+  --primario: #5fae86;
+  --primario-testo: #0d1a13;
+  --accento: #1f3329;
+  --pericolo: #f2867d;
+  --barra: #2b5a44;
+  --barra-ico: rgba(231, 236, 233, .62);
+  --barra-attiva: #ffffff;
+  --barra-pastiglia: rgba(255, 255, 255, .2);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -126,13 +143,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn-ico.piccolo { width: 32px; height: 32px; font-size: 14px; background: none; color: var(--tenue); }
 
 .nav-sett { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+/* barra in alto sempre visibile mentre si scorre (Menù e Ricette), sotto il notch */
+.barra-fissa {
+  position: sticky; top: 0; z-index: 5; background: var(--sfondo);
+  margin: calc(-12px - env(safe-area-inset-top)) -16px 12px;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 8px;
+  box-shadow: 0 1px 0 var(--bordo);
+}
+.barra-fissa .nav-sett { margin-bottom: 0; }
+.barra-fissa .chip-riga:last-child { margin-bottom: 0; }
+.barra-fissa input[type="search"] { margin-bottom: 0; }
+.scelta-tema { display: flex; gap: 6px; flex-wrap: wrap; }
 .titolo-sett { flex: 1; text-align: center; display: flex; flex-direction: column; cursor: pointer; }
 .titolo-sett small { color: var(--tenue); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 
 .giorno {
   background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio);
   margin-bottom: 10px; overflow: hidden;
-  scroll-margin-top: calc(10px + env(safe-area-inset-top)); /* giorno di oggi portato in cima, sotto il notch */
 }
 .giorno.oggi { border-color: var(--primario); box-shadow: 0 0 0 1px var(--primario); }
 .giorno > header {

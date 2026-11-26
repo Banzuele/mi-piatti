@@ -164,6 +164,24 @@ async function avvia() {
   disegna();
 }
 
+// ---------------------------------------------------------------- tema
+// Automatico (come il telefono), chiaro o scuro. Salvato solo su questo
+// telefono; index.html lo applica già prima di disegnare la pagina.
+const CHIAVE_TEMA = "mipiatti:tema";
+function leggiTema() {
+  try { const t = localStorage.getItem(CHIAVE_TEMA); return t === "chiaro" || t === "scuro" ? t : "auto"; } catch { return "auto"; }
+}
+function impostaTema(t) {
+  const tema = t === "chiaro" || t === "scuro" ? t : "auto";
+  try { if (tema === "auto") localStorage.removeItem(CHIAVE_TEMA); else localStorage.setItem(CHIAVE_TEMA, tema); } catch { /* niente */ }
+  if (tema === "auto") delete document.documentElement.dataset.tema;
+  else document.documentElement.dataset.tema = tema;
+  // colore della barra di stato del telefono
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+    m.content = tema === "scuro" ? "#121614" : tema === "chiaro" ? "#f6f4ef" : (m.dataset.scuro || m.dataset.chiaro);
+  });
+}
+
 // ---------------------------------------------------------------- disegno
 // Stato della sincronizzazione: piccola etichetta in cima a ogni pagina
 // (sotto le date della settimana nel Menù e nella Spesa).
@@ -214,7 +232,11 @@ function mostraOggi(avvio = false) {
   if (!el) return;
   S.oggiMostrato = true;
   if (avvio && window.scrollY > 0) return; // l'utente ha già scorso da solo
-  requestAnimationFrame(() => el.scrollIntoView({ block: "start" }));
+  // sotto la barra fissa in alto (che copre anche il notch)
+  requestAnimationFrame(() => {
+    const barra = document.querySelector(".barra-fissa")?.offsetHeight || 0;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - barra - 10);
+  });
 }
 // L'app installata spesso non si riavvia ma torna dallo sfondo (soprattutto su
 // iPhone): se è rimasta chiusa a lungo si riapre come nuova, sulla settimana e
@@ -294,12 +316,12 @@ function vistaInstalla(pannello) {
     <details><summary>${ios ? "Android" : "iPhone e iPad"}</summary>${ios ? istruzioniAndroid() : istruzioniIOS()}</details>`;
 }
 
-function navSettimana() {
+function navSettimana(fissa = false) {
   const corrente = lunediDi(oggiISO());
   const quale = S.settimana === corrente ? "Questa settimana"
     : S.settimana === aggiungiGiorni(corrente, 7) ? "Prossima settimana"
     : S.settimana === aggiungiGiorni(corrente, -7) ? "Settimana scorsa" : "Settimana";
-  return `<div class="nav-sett">
+  return `${fissa ? `<div class="barra-fissa">` : ""}<div class="nav-sett">
     <button class="btn-ico" data-azione="sett" data-delta="-7" aria-label="Settimana precedente">‹</button>
     <div class="titolo-sett">
       <small>${quale}</small><strong>${intervalloSettimana(S.settimana)}</strong>
@@ -308,7 +330,7 @@ function navSettimana() {
         : statoSync()}
     </div>
     <button class="btn-ico" data-azione="sett" data-delta="7" aria-label="Settimana successiva">›</button>
-  </div>`;
+  </div>${fissa ? "</div>" : ""}`;
 }
 
 // ---------------------------------------------------------------- menù
@@ -317,7 +339,7 @@ function vistaMenu() {
   const P = piano();
   const oggi = oggiISO();
   const haPasti = giorni.some((d) => PASTI.some((p) => P[chiavePasto(d, p)]));
-  let h = navSettimana() + invitoInstalla();
+  let h = navSettimana(true) + invitoInstalla();
   if (S.scambio) {
     const [d, p] = S.scambio.split("_");
     h += `<div class="banner">Tocca un altro ${PASTO[p].nome.toLowerCase()} da scambiare con quello di ${formattaGiornoMese(d)}.
@@ -1099,14 +1121,16 @@ function vistaSpesa() {
 const NOMI_STAGIONI = { primavera: "🌸 Primavera", estate: "☀️ Estate", autunno: "🍂 Autunno", inverno: "❄️ Inverno" };
 function vistaRicette() {
   const filtri = [["tutti", "Tutte"], ["pranzo", "Pranzi"], ["cena", "Cene"]];
-  return `<div class="riga-stato">${statoSync()}</div>
-    <button class="btn primario largo centro-testo" data-azione="nuova-ricetta">+ Nuova ricetta</button>
+  return `<div class="barra-fissa">
+    <div class="riga-stato">${statoSync()}</div>
     <input type="search" id="cerca-ricette" placeholder="Cerca una ricetta o un ingrediente…" value="${esc(S.cercaRicetta)}">
     <div class="chip-riga">${filtri.map(([v, t]) =>
       `<button class="chip ${S.filtroPasto === v ? "attivo" : ""}" data-azione="filtro-pasto" data-valore="${v}">${t}</button>`).join("")}</div>
     <div class="chip-riga scorre" role="group" aria-label="Stagione">${[["tutte", "Tutte le stagioni"], ...STAGIONI.map((s) => [s, NOMI_STAGIONI[s]])].map(([v, t]) =>
       `<button class="chip ${S.filtroStagione === v ? "attivo" : ""}" data-azione="filtro-stagione" data-valore="${v}"
         ${v === stagioneDi(oggiISO()) ? 'title="Stagione attuale"' : ""}>${t}${v === stagioneDi(oggiISO()) ? ' <span class="ora">ora</span>' : ""}</button>`).join("")}</div>
+    </div>
+    <button class="btn primario largo centro-testo" data-azione="nuova-ricetta">+ Nuova ricetta</button>
     <div id="lista-ricette"></div>`;
 }
 
@@ -1142,7 +1166,14 @@ function vistaAltro() {
   const oggi = oggiISO();
   const nomeTipo = { ferie: "Ferie", mensa: "Mensa chiusa", altro: "A casa" };
   const feste = [...festivita(anno), ...festivita(anno + 1)].filter((f) => f.data >= oggi).slice(0, 8);
+  const tema = leggiTema();
   return `<div class="riga-stato">${statoSync()}</div>
+  <section class="pannello">
+    <h2>Tema</h2>
+    <div class="scelta-tema" role="group" aria-label="Tema">${[["auto", "Automatico"], ["chiaro", "☀️ Chiaro"], ["scuro", "🌙 Scuro"]].map(([v, t]) =>
+      `<button class="chip ${tema === v ? "attivo" : ""}" data-azione="tema" data-valore="${v}" aria-pressed="${tema === v}">${t}</button>`).join("")}</div>
+    <p class="nota">Automatico segue l'impostazione del telefono. La scelta vale solo su questo telefono.</p>
+  </section>
   <section class="pannello">
     <h2>Account</h2>
     ${archivio.modalita === "locale"
@@ -1295,6 +1326,7 @@ document.addEventListener("click", async (e) => {
       archivio.elimina("ricetteUtente", id); chiudiModale(); avviso("Ricetta eliminata"); break;
     case "chiudi": chiudiModale(); break;
     case "vai-menu": S.scheda = "menu"; disegna(); break;
+    case "tema": impostaTema(el.dataset.valore); disegna(); break;
     case "filtro-pasto": S.filtroPasto = el.dataset.valore; disegna(); break;
     case "filtro-stagione": S.filtroStagione = el.dataset.valore; disegna(); break;
     case "togli-extra": archivio.elimina("extra", id); break;
