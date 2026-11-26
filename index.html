@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="it" data-versione="v19">
+<html lang="it" data-versione="v20">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mi-Piatti</title>
   <meta name="description" content="Menù settimanale e lista della spesa condivisi per la famiglia.">
-  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)" data-chiaro="#f6f4ef">
-  <meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)" data-scuro="#121614">
+  <meta name="theme-color" content="#2f6b4f" media="(prefers-color-scheme: light)" data-chiaro="#2f6b4f">
+  <meta name="theme-color" content="#2b5a44" media="(prefers-color-scheme: dark)" data-scuro="#2b5a44">
   <!-- tema scelto in Altro (solo su questo telefono): applicato subito, senza lampi -->
-  <script>try { var t = localStorage.getItem("mipiatti:tema"); if (t === "chiaro" || t === "scuro") { document.documentElement.dataset.tema = t; document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = t === "scuro" ? "#121614" : "#f6f4ef"; }); } } catch (e) {}</script>
+  <script>try { var t = localStorage.getItem("mipiatti:tema"); if (t === "chiaro" || t === "scuro") { document.documentElement.dataset.tema = t; document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = t === "scuro" ? "#2b5a44" : "#2f6b4f"; }); } } catch (e) {}</script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icona.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
@@ -17,7 +17,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Mi-Piatti">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- testo bianco nella barra di stato, sopra il verde della barra in alto -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="format-detection" content="telephone=no">
   <!-- SPLASH: generato da strumenti/genera_splash.cjs -->
   <link rel="apple-touch-startup-image" href="icons/splash/splash-1320x2868-chiaro.png" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)">
