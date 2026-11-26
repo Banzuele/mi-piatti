@@ -36,7 +36,7 @@ test("promemoria: cena doppia, pasti da scegliere, giorno di spesa, menù mancan
   assert.ok(!l.some((x) => x.ico === "carrello"));
   // venerdì 4 -> domani sabato: giorno della spesa
   l = promemoriaDomani({ oggi: "2026-12-04", piano, pasti, ricettePerId, alimentiPerId });
-  assert.ok(l.some((x) => x.ico === "carrello"));
+  assert.ok(l.some((x) => x.ico === "carrello" && x.tipo === "spesa"));
   // domenica 6 -> lunedì 7, settimana senza menù
   l = promemoriaDomani({ oggi: "2026-12-06", piano, pasti, ricettePerId, alimentiPerId });
   assert.ok(l.some((x) => x.ico === "dado"));

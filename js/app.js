@@ -12,7 +12,7 @@ import {
   TIPI_PIATTO, regoleSettimana, contaTipiSettimana, costoPorzione, costoSettimana,
 } from "./pianificatore.js";
 import { ico, ICONA_PROTEINA_NOME } from "./icone.js";
-import { promemoriaDomani } from "./promemoria.js";
+import { promemoriaDomani, TIPI_PROMEMORIA } from "./promemoria.js";
 import { creaBackup, leggiBackup, nomeFileBackup } from "./backup.js";
 import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita, spuntatiInFondo } from "./spesa.js";
 import {
@@ -388,12 +388,25 @@ function riepilogoSettimana(giorni) {
   return `<div class="chip-riga scorre riepilogo" aria-label="Riepilogo della settimana">${chip.join("")}</div>`;
 }
 
-// Promemoria per domani, in cima al giorno di oggi
+// Promemoria per domani, in cima al giorno di oggi. Si spengono in Altro
+// (tutti o uno per uno); la scelta vale solo su questo telefono, come il tema.
+const CHIAVE_PROMEMORIA = "mipiatti:promemoria";
+function leggiPromemoria() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHIAVE_PROMEMORIA) || "null");
+    return { attivi: v?.attivi !== false, spenti: Array.isArray(v?.spenti) ? v.spenti : [] };
+  } catch { return { attivi: true, spenti: [] }; }
+}
+function salvaPromemoria(v) {
+  try { localStorage.setItem(CHIAVE_PROMEMORIA, JSON.stringify(v)); } catch { /* niente */ }
+}
 function vistaPromemoria() {
+  const scelta = leggiPromemoria();
+  if (!scelta.attivi) return "";
   const lista = promemoriaDomani({
     oggi: oggiISO(), pasti: S.pasti, piano: piano(), ricettePerId: S.ricettePerId,
     alimentiPerId: S.alimentiPerId, giorniCasa: S.giorniCasa, imp: imp(), molt: (k) => moltPasto(k).valore,
-  });
+  }).filter((x) => !scelta.spenti.includes(x.tipo));
   if (!lista.length) return "";
   return `<div class="promemoria" role="note" aria-label="Promemoria per domani">
     <strong>${ico("campanella")} Per domani</strong>
@@ -1356,6 +1369,7 @@ function vistaAltro() {
       `<button class="chip ${tema === v ? "attivo" : ""}" data-azione="tema" data-valore="${v}" aria-pressed="${tema === v}">${t}</button>`).join("")}</div>
     <p class="nota">Automatico segue l'impostazione del telefono. La scelta vale solo su questo telefono.</p>
   </section>
+  ${vistaImpPromemoria()}
   <section class="pannello">
     <h2>Account</h2>
     ${archivio.modalita === "locale"
@@ -1447,6 +1461,19 @@ function vistaAltro() {
     </form>
   </section>
   <p class="nota centro">Mi-Piatti ${document.documentElement.dataset.versione || ""} · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+}
+
+function vistaImpPromemoria() {
+  const { attivi, spenti } = leggiPromemoria();
+  return `<section class="pannello">
+    <h2>${ico("campanella")} Promemoria</h2>
+    <label class="interruttore grande-tocco"><input type="checkbox" data-azione="promemoria-tutti" ${attivi ? "checked" : ""}> Mostra i promemoria "Per domani" nel Menù</label>
+    <fieldset class="tipi-promemoria" ${attivi ? "" : "disabled"}>
+      <legend class="nota">Quali mostrare:</legend>
+      ${TIPI_PROMEMORIA.map((x) => `<label class="interruttore grande-tocco"><input type="checkbox" data-azione="promemoria-tipo" data-tipo="${x.id}" ${spenti.includes(x.id) ? "" : "checked"}> ${ico(x.ico)} ${esc(x.nome)}</label>`).join("")}
+    </fieldset>
+    <p class="nota">La scelta vale solo su questo telefono.</p>
+  </section>`;
 }
 
 // Quanto si spende davvero: totale dei prezzi scritti nella Spesa, per
@@ -1716,6 +1743,15 @@ document.addEventListener("change", (e) => {
     impostaNegozio(el.checked);
     disegna();
     if (!el.checked && senzaPrezzo(vociSpesa()).length) apriConfermaPrezzi();
+  } else if (el.dataset.azione === "promemoria-tutti") {
+    salvaPromemoria({ ...leggiPromemoria(), attivi: el.checked });
+    disegna();
+    avviso(el.checked ? "Promemoria attivi" : "Promemoria spenti");
+  } else if (el.dataset.azione === "promemoria-tipo") {
+    const v = leggiPromemoria();
+    const spenti = new Set(v.spenti);
+    if (el.checked) spenti.delete(el.dataset.tipo); else spenti.add(el.dataset.tipo);
+    salvaPromemoria({ ...v, spenti: [...spenti] });
   } else if (el.dataset.azione === "backup-file") {
     apriBackup(el.files?.[0]);
     el.value = "";

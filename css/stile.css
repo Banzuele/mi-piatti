@@ -586,3 +586,8 @@ html, body { overscroll-behavior-y: none; }
 .nascosto { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
 .elenco-backup { list-style: none; padding: 0; margin: 8px 0; }
 .elenco-backup li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--bordo); }
+/* promemoria: interruttori in Altro */
+.interruttore.grande-tocco { min-height: 40px; }
+.tipi-promemoria { border: 0; margin: 4px 0 0; padding: 0 0 0 8px; }
+.tipi-promemoria legend { padding: 0; }
+.tipi-promemoria[disabled] { opacity: .5; }
