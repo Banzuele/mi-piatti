@@ -97,3 +97,18 @@ export function costoVoce({ pagato, st, stima, quantita, unita }) {
   const v = costoDaUnitario(stima, quantita, unita);
   return v ? { valore: v, fonte: "stima" } : null;
 }
+
+// Quanto si è speso davvero (solo prezzi scritti, niente stime).
+// Settimana = quella del menù (la chiave del prezzo inizia con il suo lunedì),
+// altrimenti quella della data di acquisto; mese = mese della data di acquisto.
+export function spesaReale(prezzi, lunediDi) {
+  const settimane = new Map(), mesi = new Map();
+  for (const [id, p] of Object.entries(prezzi || {})) {
+    if (!(p?.prezzo > 0) || typeof p.data !== "string") continue;
+    const sett = /^\d{4}-\d{2}-\d{2}_/.test(id) ? id.slice(0, 10) : lunediDi(p.data);
+    settimane.set(sett, (settimane.get(sett) || 0) + p.prezzo);
+    const mese = p.data.slice(0, 7);
+    mesi.set(mese, (mesi.get(mese) || 0) + p.prezzo);
+  }
+  return { settimane, mesi };
+}
