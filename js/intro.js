@@ -1,6 +1,6 @@
 // Intro all'apertura: icona con i piatti che girano mentre si cercano aggiornamenti.
 // Script classico (non modulo): parte subito, prima che l'app sia caricata.
-// Si rivede anche quando si torna all'app dopo che è rimasta in secondo piano.
+// Solo all'avvio vero: tornando all'app da un'altra finestra non ricompare.
 (function () {
   var intro = document.getElementById("intro");
   if (!intro) return;
@@ -10,7 +10,6 @@
 
   var DURATA_MINIMA = 1400; // almeno un giro completo dei piatti
   var ATTESA_MASSIMA = 4000; // con rete lenta non si aspetta oltre
-  var RIAPERTURA_DOPO = 30000; // in secondo piano da almeno 30 s = app "riaperta"
 
   // appena ricaricata dopo un aggiornamento automatico: lo si dice nell'intro
   var aggiornata = false;
@@ -62,12 +61,6 @@
         inCorso = false;
       });
   }
-
-  var nascostaDa = 0;
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden") nascostaDa = Date.now();
-    else if (nascostaDa && Date.now() - nascostaDa >= RIAPERTURA_DOPO) mostra();
-  });
 
   // Pagina ricaricata (trascinando giù o con "Aggiorna"): niente intro,
   // l'app mostra il caricamento al posto della nuvola in alto.

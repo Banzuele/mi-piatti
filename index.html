@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="it" data-versione="v15">
+<html lang="it" data-versione="v16">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mi-Piatti</title>
   <meta name="description" content="Menù settimanale e lista della spesa condivisi per la famiglia.">
-  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)" data-chiaro="#f6f4ef">
+  <meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)" data-scuro="#121614">
+  <!-- tema scelto in Altro (solo su questo telefono): applicato subito, senza lampi -->
+  <script>try { var t = localStorage.getItem("mipiatti:tema"); if (t === "chiaro" || t === "scuro") { document.documentElement.dataset.tema = t; document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.content = t === "scuro" ? "#121614" : "#f6f4ef"; }); } } catch (e) {}</script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icona.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
