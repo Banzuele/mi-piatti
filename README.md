@@ -2,7 +2,7 @@
 
 > **Regola del progetto: ogni modifica deve funzionare sia su Android (Chrome) sia su iPhone/iPad (Safari, app installata dalla schermata Home).** Vedi [`CLAUDE.md`](CLAUDE.md) per la lista dei controlli.
 
-App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena; Menù e Lista mostrano sempre la settimana da lunedì a domenica e all'apertura il Menù scorre al giorno di oggi; in Menù e Ricette la barra in alto resta fissa; tema automatico, chiaro o scuro in Altro) e la **lista della spesa** ordinata come i reparti Esselunga. Menù e spesa sono condivisi tra due telefoni in tempo reale e funzionano anche senza rete.
+App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena; Menù e Lista mostrano sempre la settimana da lunedì a domenica e all'apertura il Menù scorre al giorno di oggi; in Menù, Spesa e Ricette la barra in alto resta fissa; tema automatico, chiaro o scuro in Altro) e la **lista della spesa** ordinata come i reparti Esselunga. Menù e spesa sono condivisi tra due telefoni in tempo reale e funzionano anche senza rete.
 
 ## Cosa fa
 
