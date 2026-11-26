@@ -949,6 +949,17 @@ function quantitaComprata(v) {
   return a?.conf && v.confezioni ? v.confezioni * a.conf : v.quantita || 1;
 }
 
+// Prezzo medio dallo storico (stessa unità dell'ultimo prezzo)
+const unitarioMedio = (st) => ({ valore: st.media, unita: st.ultimo.unita });
+// Riquadro del prezzo medio nel pop-up del prezzo
+function boxMedia(st, stima, unita) {
+  if (st) return `<p class="box-media" id="box-media" data-media="${st.media}" data-unita="${esc(st.ultimo.unita)}">
+    <span>Prezzo medio</span><b>${formattaUnitario(unitarioMedio(st))}</b>
+    <small>${st.n === 1 ? "su 1 acquisto" : `su ${st.n} acquisti`} · ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})</small></p>`;
+  return `<p class="box-media vuota"><span>Prezzo medio</span><b>—</b>
+    <small>${stima ? `nessun acquisto ancora · stima ${formattaUnitario({ valore: stima, unita: UNITA_PREZZO[unita] || "pz" })} (indicativa)` : "nessun acquisto ancora: questo è il primo prezzo"}</small></p>`;
+}
+
 function rigaPrezzo(v) {
   const pagato = S.prezzi[v.chiave];
   const st = statistiche(storico(S.prezzi, v.prodotto));
@@ -962,7 +973,7 @@ function rigaPrezzo(v) {
   if (pagato) parti.push(`pagato ${formattaEuro(pagato.prezzo)}`);
   if (st) {
     parti.push(`${pagato ? "" : "ultimo "}${formattaUnitario(st.ultimo)}`);
-    if (st.n > 1) parti.push(`media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })}`);
+    parti.push(`media ${formattaUnitario(unitarioMedio(st))}`);
   }
   const fr = st?.tendenza ? FRECCE[st.tendenza] : null;
   return `<button type="button" class="voce-prezzo${fr ? ` tend-${st.tendenza}` : ""}" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">💶 ${esc(parti.join(" · "))}${fr ? ` <b title="${fr[1]}">${fr[0]}</b>` : ""}</button>`;
@@ -999,9 +1010,7 @@ function apriPrezzo(chiave) {
         </span></label>
     </div>
     <p class="anteprima-prezzo" id="anteprima-prezzo"></p>
-    ${proposta?.fonte === "stima" ? "" : st ? `<p class="nota">Ultimo ${formattaUnitario(st.ultimo)} (${esc(formattaBreve(st.data))})${st.n > 1 ? ` · media ${formattaUnitario({ valore: st.media, unita: st.ultimo.unita })} su ${st.n} acquisti` : ""}</p>` : stimaDi(v)
-      ? `<p class="nota">Nessun prezzo ancora: <b>stima</b> ${formattaUnitario({ valore: stimaDi(v), unita: UNITA_PREZZO[unita] || "pz" })} (indicativa, la sostituisce il primo prezzo che scrivi).</p>`
-      : `<p class="nota">Primo prezzo per questo prodotto.</p>`}
+    ${boxMedia(st, stimaDi(v), unita)}
     ${proposta ? `<p class="nota proposta">Prezzo proposto ${proposta.fonte === "ultimo" ? "dall'ultimo acquisto" : "dalla stima (indicativa)"}: se è giusto tocca <b>Salva</b>, altrimenti toccalo e correggilo.</p>` : ""}
     ${lista.length ? `<details class="storico"><summary>Storico (${lista.length})</summary><table class="storico-prezzi"><tbody>${lista.slice(0, 12).map((p) => `<tr>
       <td>${esc(formattaBreve(p.data))}</td><td>${formattaEuro(p.prezzo)}</td>
@@ -1022,7 +1031,15 @@ function aggiornaAnteprimaPrezzo() {
   const f = el.closest("form");
   const prezzo = leggiNumero(f.prezzo.value);
   const u = prezzoUnitario(prezzo, Number(f.quantita.value), f.unita.value);
-  el.textContent = u ? `= ${formattaUnitario(u)}` : "";
+  let testo = u ? `= ${formattaUnitario(u)}` : "";
+  // confronto con il prezzo medio, se la stessa unità
+  const m = document.getElementById("box-media");
+  const media = Number(m?.dataset.media);
+  if (u && media > 0 && m.dataset.unita === u.unita) {
+    const d = Math.round(((u.valore - media) / media) * 100);
+    testo += d === 0 ? " · in linea con la media" : ` · ${d > 0 ? "+" : ""}${d}% ${d > 0 ? "sopra" : "sotto"} la media`;
+  }
+  el.textContent = testo;
 }
 
 function salvaPrezzo(dati) {
@@ -1234,7 +1251,7 @@ function apriConfermaPrezzi() {
     const prop = costoVoce({ pagato: null, st, stima: stimaDi(v), quantita, unita: v.unita });
     const val = prop ? (Math.round(prop.valore * 100) / 100).toFixed(2).replace(".", ",") : "";
     return `<li><span class="voce"><span class="voce-nome">${esc(v.nome)}</span>
-        <span class="voce-dett">${esc(formattaQuantita(quantita, v.unita))}${prop ? ` · ${prop.fonte === "stima" ? "stima" : "ultimo prezzo"}` : ""}</span></span>
+        <span class="voce-dett">${esc(formattaQuantita(quantita, v.unita))}${prop ? ` · ${prop.fonte === "stima" ? "stima" : "ultimo prezzo"}` : ""}${st ? ` · media ${formattaUnitario(unitarioMedio(st))}` : ""}</span></span>
       <input name="${esc(v.chiave)}" class="prezzo-riga" inputmode="decimal" autocomplete="off" placeholder="€" value="${esc(val)}" aria-label="Prezzo di ${esc(v.nome)}"></li>`;
   }).join("");
   apriModale(`<h2>💶 Conferma i prezzi</h2>

@@ -449,6 +449,14 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
 .voce-prezzo.tend-su b { color: var(--alta); }
 .voce-prezzo.tend-giu b { color: var(--bassa); }
 .voce-prezzo.tend-uguale b { color: var(--tenue); }
+.box-media {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 10px;
+  margin: 0 0 8px; padding: 8px 12px; background: var(--p-cielo); border-radius: var(--raggio);
+}
+.box-media span { font-size: 13px; color: var(--tenue); text-transform: uppercase; letter-spacing: .04em; }
+.box-media b { font-size: 17px; color: var(--testo); }
+.box-media small { grid-column: 1 / -1; font-size: 12px; color: var(--tenue); }
+.box-media.vuota b { color: var(--tenue); }
 .anteprima-prezzo { margin: 0 0 6px; font-weight: 600; color: var(--primario); min-height: 1.4em; }
 .foglio label .ingr-riga { color: var(--testo); }
 .storico-prezzi { width: 100%; border-collapse: collapse; font-size: 14px; }
