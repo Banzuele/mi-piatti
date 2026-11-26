@@ -170,7 +170,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .btn-ico.piccolo { width: 32px; height: 32px; font-size: 14px; background: none; color: var(--tenue); }
 
-.nav-sett { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.nav-sett { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+/* frecce piccole senza cerchio, ma con un'area di tocco di 40px */
+.freccia-sett {
+  flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: none;
+  color: inherit; font-size: 30px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.freccia-sett:active { background: var(--barra-chip); }
+.riga-quale { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 6px; }
+.riga-quale small { white-space: nowrap; }
+.riga-quale .stato-sync { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+/* con "Sincronizzato" basta la nuvola (il testo resta per i lettori di schermo) */
+.stato-sync .solo-icona { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* avanzamento della spesa nella barra */
+.avanz-spesa { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 14px; color: var(--barra-ico); }
+.barra-avanz { flex: 1; height: 6px; border-radius: 3px; background: var(--barra-chip); overflow: hidden; }
+.barra-avanz i { display: block; height: 100%; background: var(--ambra); border-radius: 3px; transition: width .25s; }
+.avanz-spesa .totale-spesa { color: var(--barra-attiva); font-size: 16px; white-space: nowrap; }
 /* barra in alto sempre visibile mentre si scorre (Menù e Ricette), sotto il notch */
 .barra-fissa {
   position: sticky; top: 0; z-index: 5; background: var(--barra); color: var(--barra-attiva);
@@ -190,6 +206,7 @@ body::before {
 /* elementi sopra il verde della barra */
 .barra-fissa .btn-ico { background: var(--barra-pastiglia); color: var(--barra-attiva); }
 .barra-fissa .titolo-sett small, .barra-fissa .stato-sync { color: var(--barra-ico); }
+.barra-fissa .freccia-sett { color: var(--barra-attiva); }
 .barra-fissa .stato-sync.carica { color: var(--barra-attiva); }
 .barra-fissa .torna-oggi { background: var(--barra-attiva); color: var(--barra); }
 .barra-fissa .chip { background: var(--barra-chip); border-color: var(--barra-bordo); color: var(--barra-attiva); }
@@ -202,8 +219,9 @@ body::before {
 .barra-fissa .chip-riga:last-child { margin-bottom: 0; }
 .barra-fissa input[type="search"] { margin: 6px 0 0; }
 .scelta-tema { display: flex; gap: 6px; flex-wrap: wrap; }
-.titolo-sett { flex: 1; text-align: center; display: flex; flex-direction: column; cursor: pointer; }
-.titolo-sett small { color: var(--tenue); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.titolo-sett { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; line-height: 1.2; cursor: pointer; }
+.titolo-sett strong { font-size: 18px; }
+.titolo-sett small { color: var(--tenue); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 
 .giorno {
   background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio);
@@ -256,16 +274,23 @@ body::before {
 .centro { text-align: center; }
 
 /* spesa */
-.barra-spesa { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 14px; color: var(--tenue); }
 .interruttore { display: flex; gap: 6px; align-items: center; }
 .reparto {
   display: inline-block; margin: 16px 0 6px; padding: 3px 12px; border-radius: 999px;
   background: var(--p-salvia); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--primario);
 }
-/* comandi della spesa raccolti in un riquadro pastello */
-.area-comandi { background: var(--p-menta); border: 1px solid var(--bordo); border-radius: var(--raggio); padding: 10px 12px 4px; margin-bottom: 6px; }
-.area-comandi .azioni-spesa { margin: 0 0 8px; }
-.area-comandi .barra-spesa { margin-bottom: 6px; }
+/* comandi della spesa: tasti uguali a icona sotto la barra (Dispensa e Negozio si accendono) */
+.strumenti-spesa { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.strumento {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 60px; padding: 8px 2px; border: 1px solid var(--bordo); border-radius: 10px;
+  background: var(--carta); color: var(--testo); font: inherit; font-size: 12px; line-height: 1.15;
+  text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.strumento .ic { width: 22px; height: 22px; }
+.strumento.acceso { background: var(--p-salvia); border-color: var(--primario); font-weight: 600; }
+.strumento:active { transform: scale(.97); }
+.btn.conferma-prezzi { text-align: center; margin: 4px 0; }
 ul.spesa { list-style: none; margin: 0; padding: 0; background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio); }
 ul.spesa li { display: flex; align-items: center; border-top: 1px solid var(--bordo); }
 ul.spesa li:first-child { border-top: 0; }

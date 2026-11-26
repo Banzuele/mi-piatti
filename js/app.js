@@ -221,7 +221,7 @@ function testoStato() {
   if (!navigator.onLine) return ["offline", "Offline: salvo e sincronizzo dopo"];
   return S.inAttesa ? ["clessidra", "Sincronizzo…"] : ["nuvola", "Sincronizzato"];
 }
-const htmlStato = () => { const [i, t] = testoStato(); return t ? `${ico(i)} ${esc(t)}` : ""; };
+const htmlStato = () => { const [i, t] = testoStato(); return t ? `${ico(i)} <span class="testo-stato${i === "nuvola" ? " solo-icona" : ""}">${esc(t)}</span>` : ""; };
 function disegnaStato() {
   const t = htmlStato();
   document.querySelectorAll(".stato-sync").forEach((el) => {
@@ -351,15 +351,15 @@ function navSettimana(fissa = false, sotto = "") {
   const quale = S.settimana === corrente ? "Questa settimana"
     : S.settimana === aggiungiGiorni(corrente, 7) ? "Prossima settimana"
     : S.settimana === aggiungiGiorni(corrente, -7) ? "Settimana scorsa" : "Settimana";
+  // barra sottile: frecce piccole ai lati, settimana e stato su due righe
   return `${fissa ? `<div class="barra-fissa">` : ""}<div class="nav-sett">
-    <button class="btn-ico" data-azione="sett" data-delta="-7" aria-label="Settimana precedente">‹</button>
+    <button class="freccia-sett" data-azione="sett" data-delta="-7" aria-label="Settimana precedente">‹</button>
     <div class="titolo-sett">
-      <small>${quale}</small><strong>${intervalloSettimana(S.settimana)}</strong>
-      ${S.settimana !== corrente
-        ? `<button class="torna-oggi" data-azione="sett-oggi">↩ Torna a questa settimana</button>`
-        : statoSync()}
+      <span class="riga-quale"><small>${quale}</small>${S.settimana === corrente ? statoSync() : ""}</span>
+      <strong>${intervalloSettimana(S.settimana)}</strong>
+      ${S.settimana !== corrente ? `<button class="torna-oggi" data-azione="sett-oggi">↩ Torna a questa settimana</button>` : ""}
     </div>
-    <button class="btn-ico" data-azione="sett" data-delta="7" aria-label="Settimana successiva">›</button>
+    <button class="freccia-sett" data-azione="sett" data-delta="7" aria-label="Settimana successiva">›</button>
   </div>${sotto}${fissa ? "</div>" : ""}`;
 }
 
@@ -1100,11 +1100,6 @@ function totaleSpesa(voci) {
   }
   return { tot, pagato, stime };
 }
-function testoTotaleSpesa(voci) {
-  const { tot, pagato, stime } = totaleSpesa(voci);
-  if (!tot) return "";
-  return ` · <b class="totale-spesa" title="${stime} prezzi stimati">≈ ${formattaEuro(tot)}</b>${pagato ? ` <small>(pagati ${formattaEuro(pagato)})</small>` : ""}`;
-}
 
 // ---------------------------------------------------------------- aggiungi alla spesa
 // Finestra del "+": mentre si scrive suggerisce i prodotti già presenti nell'app
@@ -1211,26 +1206,30 @@ function impostaNegozio(on) {
 const senzaPrezzo = (voci) => voci.filter((v) => v.fatto && !S.prezzi[v.chiave]);
 
 function vistaSpesa() {
-  let h = navSettimana(true);
   const tutte = vociSpesa();
   const voci = spuntatiInFondo(tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra));
   const presi = voci.filter((v) => v.fatto).length;
   const negozio = modalitaNegozio();
   const daPrezzare = senzaPrezzo(tutte).length;
-  h += `<div class="area-comandi"><div class="azioni-spesa">
-    ${"share" in navigator ? `<button class="btn piccolo" data-azione="condividi-spesa">${ico("condividi")} Condividi</button>` : ""}
-    <button class="btn piccolo" data-azione="copia-spesa">${ico("elenco")} Copia</button>
-    <button class="btn piccolo" data-azione="azzera-spunte">${ico("ripristina")} Togli le spunte</button>
-  </div>
-  <div class="barra-spesa">
-    <span>${presi}/${voci.length} presi${testoTotaleSpesa(voci)}</span>
-    <label class="interruttore"><input type="checkbox" data-azione="dispensa" ${S.mostraDispensa ? "checked" : ""}> Mostra dispensa</label>
-  </div>
-  <div class="barra-spesa">
-    <label class="interruttore"><input type="checkbox" data-azione="negozio" ${negozio ? "checked" : ""}> ${ico("carrello")} Modalità negozio</label>
-    ${daPrezzare ? `<button class="btn piccolo primario" data-azione="conferma-prezzi">${ico("euro")} Conferma i prezzi (${daPrezzare})</button>` : ""}
-  </div>
-  ${negozio ? `<p class="nota">Spunta e vai avanti: i prezzi li confermi tutti insieme alla fine.</p>` : ""}</div>`;
+  // nella barra: quanti presi, avanzamento e totale previsto
+  const { tot, pagato, stime } = totaleSpesa(voci);
+  const avanz = voci.length ? `<div class="avanz-spesa">
+    <span>${presi}/${voci.length} presi</span>
+    <span class="barra-avanz" role="progressbar" aria-valuemin="0" aria-valuemax="${voci.length}" aria-valuenow="${presi}" aria-label="Prodotti presi"><i style="width:${Math.round((presi / voci.length) * 100)}%"></i></span>
+    ${tot ? `<b class="totale-spesa" title="${stime} prezzi stimati${pagato ? ` · pagati ${formattaEuro(pagato)}` : ""}">≈ ${formattaEuro(tot)}</b>` : ""}
+  </div>` : "";
+  let h = navSettimana(true, avanz);
+  // sotto la barra: tasti uguali a icona; Dispensa e Negozio restano accesi quando attivi
+  const tasti = [
+    "share" in navigator && `<button class="strumento" data-azione="condividi-spesa">${ico("condividi")}<span>Condividi</span></button>`,
+    `<button class="strumento" data-azione="copia-spesa">${ico("elenco")}<span>Copia</span></button>`,
+    `<button class="strumento" data-azione="azzera-spunte">${ico("ripristina")}<span>Togli spunte</span></button>`,
+    `<button class="strumento${S.mostraDispensa ? " acceso" : ""}" data-azione="dispensa" aria-pressed="${S.mostraDispensa}">${ico("casa")}<span>Dispensa</span></button>`,
+    `<button class="strumento${negozio ? " acceso" : ""}" data-azione="negozio" aria-pressed="${negozio}">${ico("carrello")}<span>Negozio</span></button>`,
+  ].filter(Boolean);
+  h += `<div class="strumenti-spesa" style="--n:${tasti.length}">${tasti.join("")}</div>
+  ${daPrezzare ? `<button class="btn primario largo conferma-prezzi" data-azione="conferma-prezzi">${ico("euro")} Conferma i prezzi (${daPrezzare})</button>` : ""}
+  ${negozio ? `<p class="nota">Modalità negozio: spunta e vai avanti, i prezzi li confermi tutti insieme alla fine.</p>` : ""}`;
   if (!tutte.length) {
     h += `<div class="vuoto"><p>Nessun pasto in questa settimana, quindi niente da comprare.</p>
       <button class="btn" data-azione="vai-menu">Vai al menù</button></div>`;
@@ -1714,6 +1713,15 @@ document.addEventListener("click", async (e) => {
       break;
     }
     case "copia-spesa": await copiaTesto(testoSpesa()); break;
+    case "dispensa": S.mostraDispensa = !S.mostraDispensa; disegna(); break;
+    case "negozio": {
+      const on = !modalitaNegozio();
+      impostaNegozio(on);
+      disegna();
+      avviso(on ? "Modalità negozio attiva" : "Modalità negozio spenta");
+      if (!on && senzaPrezzo(vociSpesa()).length) apriConfermaPrezzi();
+      break;
+    }
     case "azzera-spunte": {
       const ops = [];
       for (const k of Object.keys(S.spunte)) if (k.startsWith(`${S.settimana}_`)) ops.push({ coll: "spunte", id: k, dati: null });
@@ -1739,10 +1747,6 @@ document.addEventListener("change", (e) => {
     if (u) u.textContent = a ? NOMI_UNITA[a.unita] || a.unita : "";
   } else if (el.id === "prezzo-unita") {
     aggiornaAnteprimaPrezzo();
-  } else if (el.dataset.azione === "negozio") {
-    impostaNegozio(el.checked);
-    disegna();
-    if (!el.checked && senzaPrezzo(vociSpesa()).length) apriConfermaPrezzi();
   } else if (el.dataset.azione === "promemoria-tutti") {
     salvaPromemoria({ ...leggiPromemoria(), attivi: el.checked });
     disegna();
@@ -1755,9 +1759,6 @@ document.addEventListener("change", (e) => {
   } else if (el.dataset.azione === "backup-file") {
     apriBackup(el.files?.[0]);
     el.value = "";
-  } else if (el.dataset.azione === "dispensa") {
-    S.mostraDispensa = el.checked;
-    disegna();
   }
 });
 
