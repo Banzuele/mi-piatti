@@ -28,7 +28,7 @@ const S = {
   pasti: {}, spunte: {}, extra: {}, giorniCasa: {}, impostazioni: {}, prezzi: {}, prezzoAperto: null,
   utente: null, pronto: false, inAttesa: false, errore: null,
   scheda: "menu", settimana: lunediDi(oggiISO()), oggiMostrato: false, scambio: null,
-  mostraDispensa: true, cercaRicetta: "", filtroPasto: "tutti", filtroStagione: "tutte", aggiornando: false,
+  mostraDispensa: true, cercaRicetta: "", filtroPasto: "tutti", filtroStagione: "tutte", aggiornando: false, capitolo: null,
 };
 const archivio = creaArchivio(firebaseConfig, famiglia);
 const $contenuto = document.getElementById("contenuto");
@@ -1363,9 +1363,12 @@ function disegnaListaRicette() {
 }
 
 // ---------------------------------------------------------------- altro
-function vistaAltro() {
+// Altro: elenco compatto di capitoli; toccandone uno si apre il dettaglio
+// (con la freccia in alto, o il tasto Indietro del telefono, si torna all'elenco).
+function capitoliAltro() {
   const I = imp();
   const anno = Number(oggiISO().slice(0, 4));
+  const oggi = oggiISO();
   const casa = Object.entries(S.giorniCasa).sort(([a], [b]) => a.localeCompare(b));
   // raggruppa giorni consecutivi con lo stesso tipo e nota
   const gruppi = [];
@@ -1375,34 +1378,27 @@ function vistaAltro() {
       g.al = d; g.giorni.push(d);
     } else gruppi.push({ dal: d, al: d, tipo: v.tipo, nota: v.nota, giorni: [d] });
   }
-  const oggi = oggiISO();
   const nomeTipo = { ferie: "Ferie", mensa: "Mensa chiusa", altro: "A casa" };
-  const feste = [...festivita(anno), ...festivita(anno + 1)].filter((f) => f.data >= oggi).slice(0, 8);
   const tema = leggiTema();
-  return `<div class="barra-fissa"><div class="riga-titolo"><strong>Altro</strong>${statoSync()}</div></div>
-  <section class="pannello">
-    <h2>Tema</h2>
-    <div class="scelta-tema" role="group" aria-label="Tema">${[["auto", "Automatico"], ["chiaro", `${ico("pranzo")} Chiaro`], ["scuro", `${ico("cena")} Scuro`]].map(([v, t]) =>
-      `<button class="chip ${tema === v ? "attivo" : ""}" data-azione="tema" data-valore="${v}" aria-pressed="${tema === v}">${t}</button>`).join("")}</div>
-    <p class="nota">Automatico segue l'impostazione del telefono. La scelta vale solo su questo telefono.</p>
-  </section>
-  ${vistaImpPromemoria()}
-  <section class="pannello">
-    <h2>Account</h2>
-    ${archivio.modalita === "locale"
-      ? `<p>L'app funziona solo su questo telefono. Per condividere menù e spesa bisogna collegare Firebase (istruzioni nel README del progetto).</p>`
-      : `<p>Connesso come <strong>${esc(S.utente?.nome)}</strong>${S.utente?.email ? ` (${esc(S.utente.email)})` : ""}.</p>
-         <button class="btn" data-azione="esci">Esci</button>`}
-  </section>
-
-  <section class="pannello">
-    <h2>Installa sul telefono</h2>
-    ${vistaInstalla(true)}
-  </section>
-
-  <section class="pannello">
-    <h2>Giorni a casa</h2>
-    <p class="nota">Ferie e giorni con la mensa chiusa: il pranzo diventa per tutta la famiglia (×${num(I.moltFamiglia)}). Le festività nazionali sono già incluse.</p>
+  const prom = leggiPromemoria();
+  const promAccesi = TIPI_PROMEMORIA.filter((x) => !prom.spenti.includes(x.id)).length;
+  const giorniFuturi = casa.filter(([d]) => d >= oggi).length;
+  const budget = Number(I.budget) > 0 ? Number(I.budget) : 0;
+  const mediaSpesa = mediaSpesaReale();
+  return [
+    { id: "tema", titolo: "Aspetto", ico: tema === "scuro" ? "cena" : "pranzo", colore: "menta",
+      riassunto: { auto: "Tema automatico, come il telefono", chiaro: "Tema chiaro", scuro: "Tema scuro" }[tema],
+      corpo: () => `<div class="scelta-tema" role="group" aria-label="Tema">${[["auto", "Automatico"], ["chiaro", `${ico("pranzo")} Chiaro`], ["scuro", `${ico("cena")} Scuro`]].map(([v, t]) =>
+        `<button class="chip ${tema === v ? "attivo" : ""}" data-azione="tema" data-valore="${v}" aria-pressed="${tema === v}">${t}</button>`).join("")}</div>
+      <p class="nota">Automatico segue l'impostazione del telefono. La scelta vale solo su questo telefono.</p>` },
+    { id: "promemoria", titolo: "Promemoria", ico: "campanella", colore: "cielo",
+      riassunto: prom.attivi ? `Attivi: ${promAccesi} su ${TIPI_PROMEMORIA.length}` : "Spenti",
+      corpo: vistaImpPromemoria },
+    { id: "casa", titolo: "Giorni a casa", ico: "casa", colore: "giallo",
+      riassunto: giorniFuturi ? `${giorniFuturi} ${giorniFuturi === 1 ? "giorno in arrivo" : "giorni in arrivo"} · festività incluse` : "Ferie e mensa chiusa · festività incluse",
+      corpo: () => {
+        const feste = [...festivita(anno), ...festivita(anno + 1)].filter((f) => f.data >= oggi).slice(0, 8);
+        return `<p class="nota">Ferie e giorni con la mensa chiusa: il pranzo diventa per tutta la famiglia (×${num(I.moltFamiglia)}). Le festività nazionali sono già incluse.</p>
     <form class="form-casa" data-azione="aggiungi-casa">
       <label>Dal <input type="date" name="dal" required value="${oggi}"></label>
       <label>Al <input type="date" name="al" value=""></label>
@@ -1417,12 +1413,11 @@ function vistaAltro() {
       || "<li class='nota'>Nessun giorno inserito.</li>"}</ul>
     <details><summary>Prossime festività</summary>
       <ul class="elenco-casa">${feste.map((f) => `<li><span><strong>${formattaGiornoMese(f.data)} ${f.data.slice(0, 4)}</strong> ${esc(f.nome)}</span></li>`).join("")}</ul>
-    </details>
-  </section>
-
-  <section class="pannello">
-    <h2>Menù e budget</h2>
-    <form class="form-imp" data-azione="salva-imp">
+    </details>`;
+      } },
+    { id: "budget", titolo: "Menù e budget", ico: "elenco", colore: "lavanda",
+      riassunto: `${budget ? `Budget ${budget} € a settimana` : "Nessun budget"} · cena ${Number(I.cenaDoppia) === 1 ? "doppia" : "normale"}`,
+      corpo: () => `<form class="form-imp" data-azione="salva-imp">
       <label>Cena dei giorni feriali
         <select name="cenaDoppia">
           <option value="0" ${Number(I.cenaDoppia) === 1 ? "" : "selected"}>Normale ×${num(I.moltFamiglia)} (predefinita)</option>
@@ -1431,7 +1426,7 @@ function vistaAltro() {
       </label>
       <p class="nota">Con la cena doppia, da lunedì a venerdì (non nei festivi, ferie e mensa chiusa) il pranzo è fatto con gli avanzi della cena prima: una cottura in meno. Vale dal prossimo menù generato; ogni pranzo si può comunque cambiare dal Menù.</p>
       <label>Budget settimanale della spesa (€, 0 = nessuno)
-        <input type="number" min="0" step="1" inputmode="numeric" name="budget" value="${esc(Number(I.budget) > 0 ? Number(I.budget) : 0)}"></label>
+        <input type="number" min="0" step="1" inputmode="numeric" name="budget" value="${esc(budget)}"></label>
       <p class="nota">Con un budget il menù preferisce piatti più economici quando la settimana costa troppo. Conta il costo dei piatti (le dosi usate, con gli ultimi prezzi pagati o le stime), che si vede in alto nel Menù. La lista della spesa può costare di più: si comprano confezioni intere e prodotti di dispensa che durano più settimane.</p>
       <h3>Piatti per tipo in una settimana</h3>
       <p class="nota">Quante volte ogni tipo di piatto può essere proposto da lunedì a domenica (14 pasti; gli avanzi non contano).</p>
@@ -1446,24 +1441,13 @@ function vistaAltro() {
       </table>
       <button class="btn primario">Salva</button>
       <button type="button" class="btn" data-azione="tipi-predefiniti">Valori consigliati</button>
-    </form>
-  </section>
-
-  ${vistaSpesaReale()}
-
-  <section class="pannello">
-    <h2>${ico("scarica")} Copia di sicurezza</h2>
-    <p class="nota">Salva in un file menù, spesa, giorni a casa, impostazioni, ricette vostre e prezzi. Ricaricandola i dati del file si aggiungono a quelli dell'app (quelli con lo stesso giorno o nome vengono sostituiti).</p>
-    <div class="azioni-backup">
-      <button class="btn" data-azione="backup-scarica">${ico("scarica")} Scarica la copia</button>
-      <label class="btn">${ico("carica")} Ricarica una copia…<input type="file" class="nascosto" accept=".json,application/json" data-azione="backup-file"></label>
-    </div>
-    ${suIOS() ? `<p class="nota">Su iPhone si apre Condividi: scegli <strong>Salva su File</strong>.</p>` : ""}
-  </section>
-
-  <section class="pannello">
-    <h2>Impostazioni</h2>
-    <form class="form-imp" data-azione="salva-imp">
+    </form>` },
+    { id: "spesa", titolo: "Quanto spendete", ico: "grafico", colore: "pesca",
+      riassunto: mediaSpesa ? `Media ultime 4 settimane: ${formattaEuro(mediaSpesa)}` : "Ancora nessun prezzo",
+      corpo: vistaSpesaReale },
+    { id: "porzioni", titolo: "Spesa e porzioni", ico: "carrello", colore: "menta",
+      riassunto: `Spesa ${I.giornoSpesa === 0 ? "la" : "il"} ${GIORNI_LUNGHI[I.giornoSpesa].toLowerCase()} · porzioni ×${num(I.moltPranzoFeriale)} e ×${num(I.moltFamiglia)}`,
+      corpo: () => `<form class="form-imp" data-azione="salva-imp">
       <label>Giorno della spesa e del nuovo menù
         <select name="giornoSpesa">${[6, 0, 1, 2, 3, 4, 5].map((g) =>
           `<option value="${g}" ${g === I.giornoSpesa ? "selected" : ""}>${GIORNI_LUNGHI[g]}</option>`).join("")}</select>
@@ -1475,33 +1459,92 @@ function vistaAltro() {
       <label>Tempo totale massimo (min) <input type="number" min="5" name="maxTotale" value="${esc(I.maxTotale)}"></label>
       <label>Ripetizioni massime di una ricetta in 4 settimane <input type="number" min="1" name="maxRipetizioni" value="${esc(I.maxRipetizioni)}"></label>
       <button class="btn primario">Salva</button>
-    </form>
-  </section>
+    </form>` },
+    { id: "backup", titolo: "Copia di sicurezza", ico: "scarica", colore: "cielo",
+      riassunto: "Salva o ricarica tutti i dati in un file",
+      corpo: () => `<p class="nota">Salva in un file menù, spesa, giorni a casa, impostazioni, ricette vostre e prezzi. Ricaricandola i dati del file si aggiungono a quelli dell'app (quelli con lo stesso giorno o nome vengono sostituiti).</p>
+    <div class="azioni-backup">
+      <button class="btn" data-azione="backup-scarica">${ico("scarica")} Scarica la copia</button>
+      <label class="btn">${ico("carica")} Ricarica una copia…<input type="file" class="nascosto" accept=".json,application/json" data-azione="backup-file"></label>
+    </div>
+    ${suIOS() ? `<p class="nota">Su iPhone si apre Condividi: scegli <strong>Salva su File</strong>.</p>` : ""}` },
+    { id: "account", titolo: "Account", ico: "persona", colore: "giallo",
+      riassunto: archivio.modalita === "locale" ? "Solo su questo telefono" : `Connesso come ${S.utente?.nome || "—"}`,
+      corpo: () => archivio.modalita === "locale"
+        ? `<p>L'app funziona solo su questo telefono. Per condividere menù e spesa bisogna collegare Firebase (istruzioni nel README del progetto).</p>`
+        : `<p>Connesso come <strong>${esc(S.utente?.nome)}</strong>${S.utente?.email ? ` (${esc(S.utente.email)})` : ""}.</p>
+         <button class="btn" data-azione="esci">Esci</button>` },
+    { id: "installa", titolo: "Installa sul telefono", ico: "installa", colore: "lavanda",
+      riassunto: suIOS() ? "iPhone: Aggiungi alla schermata Home" : "Android: Installa app",
+      corpo: () => vistaInstalla(true) },
+  ];
+}
+
+function vistaAltro() {
+  const capitoli = capitoliAltro();
+  const c = capitoli.find((x) => x.id === S.capitolo);
+  if (c) {
+    return `<div class="barra-fissa"><div class="riga-titolo riga-capitolo">
+      <button class="freccia-sett" data-azione="chiudi-capitolo" aria-label="Torna ad Altro">‹</button>
+      <strong>${ico(c.ico)} ${esc(c.titolo)}</strong>${statoSync()}</div></div>
+    <section class="pannello capitolo-aperto c-${c.colore}" data-capitolo="${c.id}">${c.corpo()}</section>`;
+  }
+  return `<div class="barra-fissa"><div class="riga-titolo"><strong>Altro</strong>${statoSync()}</div></div>
+  <nav class="capitoli" aria-label="Capitoli">${capitoli.map((x) => `
+    <button type="button" class="capitolo c-${x.colore}" data-azione="apri-capitolo" data-capitolo="${x.id}">
+      <span class="ico-cap">${ico(x.ico)}</span>
+      <span class="testo-cap"><strong>${esc(x.titolo)}</strong><small>${esc(x.riassunto)}</small></span>
+      <span class="freccia-cap" aria-hidden="true">›</span>
+    </button>`).join("")}
+  </nav>
   <p class="nota centro">Mi-Piatti ${document.documentElement.dataset.versione || ""} · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
 }
+// Apre un capitolo di Altro. Il passo nella cronologia fa sì che il tasto o il
+// gesto Indietro (Android, iPhone) torni all'elenco invece di chiudere l'app.
+function apriCapitolo(id) {
+  S.capitolo = id;
+  try { history.pushState({ mipiatti: "capitolo" }, ""); } catch { /* niente */ }
+  disegna();
+  window.scrollTo(0, 0);
+}
+function chiudiCapitolo() {
+  if (history.state?.mipiatti === "capitolo") { history.back(); return; } // ci pensa popstate
+  S.capitolo = null;
+  disegna();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("popstate", () => {
+  if (!S.capitolo) return;
+  S.capitolo = null;
+  if (!$modale.hidden) chiudiModale();
+  disegna();
+  window.scrollTo(0, 0);
+});
 
 function vistaImpPromemoria() {
   const { attivi, spenti } = leggiPromemoria();
-  return `<section class="pannello">
-    <h2>${ico("campanella")} Promemoria</h2>
-    <label class="interruttore grande-tocco"><input type="checkbox" data-azione="promemoria-tutti" ${attivi ? "checked" : ""}> Mostra i promemoria "Per domani" nel Menù</label>
+  return `<label class="interruttore grande-tocco"><input type="checkbox" data-azione="promemoria-tutti" ${attivi ? "checked" : ""}> Mostra i promemoria "Per domani" nel Menù</label>
     <fieldset class="tipi-promemoria" ${attivi ? "" : "disabled"}>
       <legend class="nota">Quali mostrare:</legend>
       ${TIPI_PROMEMORIA.map((x) => `<label class="interruttore grande-tocco"><input type="checkbox" data-azione="promemoria-tipo" data-tipo="${x.id}" ${spenti.includes(x.id) ? "" : "checked"}> ${ico(x.ico)} ${esc(x.nome)}</label>`).join("")}
     </fieldset>
-    <p class="nota">La scelta vale solo su questo telefono.</p>
-  </section>`;
+    <p class="nota">La scelta vale solo su questo telefono.</p>`;
 }
 
 // Quanto si spende davvero: totale dei prezzi scritti nella Spesa, per
 // settimana (ultime 8, con il budget) e per mese (ultimi 6). Niente stime.
 const MESI_BREVI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+// Media delle ultime 4 settimane con prezzi scritti (per il riassunto in Altro)
+function mediaSpesaReale() {
+  const { settimane } = spesaReale(S.prezzi, lunediDi);
+  const corrente = lunediDi(oggiISO());
+  const v = [0, 1, 2, 3].map((i) => settimane.get(aggiungiGiorni(corrente, -7 * i)) || 0).filter((x) => x > 0);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+}
 function vistaSpesaReale() {
   const { settimane, mesi } = spesaReale(S.prezzi, lunediDi);
-  const titolo = `<h2>${ico("grafico")} Quanto spendete</h2>`;
   if (!settimane.size) {
-    return `<section class="pannello">${titolo}
-      <p class="nota">Ancora nessun prezzo. Il grafico si riempie con i prezzi che scrivete nella Spesa (le stime non contano).</p></section>`;
+    return `<p class="nota">Ancora nessun prezzo. Il grafico si riempie con i prezzi che scrivete nella Spesa (le stime non contano).</p>`;
   }
   const budget = Number(imp().budget) > 0 ? Number(imp().budget) : 0;
   const corrente = lunediDi(oggiISO());
@@ -1524,15 +1567,13 @@ function vistaSpesaReale() {
     </button>`;
   }).join("");
   const ultimiMesi = [...mesi.keys()].sort().reverse().slice(0, 6);
-  return `<section class="pannello">${titolo}
-    <p class="nota">Totale dei prezzi scritti nella Spesa, per settimana del menù (tocca una barra per il dettaglio).</p>
+  return `<p class="nota">Totale dei prezzi scritti nella Spesa, per settimana del menù (tocca una barra per il dettaglio).</p>
     <div class="grafico-spesa" role="group" aria-label="Spesa delle ultime 8 settimane">
       ${budget ? `<div class="linea-budget" style="top:${16 + Math.round((1 - budget / massimo) * 120)}px"><span>budget ${budget} €</span></div>` : ""}
       ${barre}
     </div>
     <p class="riassunto-spesa">${media ? `Media ultime 4 settimane: <strong>${formattaEuro(media)}</strong>` : ""}${conValore.length && budget ? ` · ${valori.filter((v) => v > budget).length} su ${conValore.length} oltre il budget` : ""}</p>
-    <table class="tabella-mesi"><caption>Per mese</caption><tbody>${ultimiMesi.map((m) => `<tr><th scope="row">${MESI_BREVI[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}</th><td>${formattaEuro(mesi.get(m))}</td></tr>`).join("")}</tbody></table>
-  </section>`;
+    <table class="tabella-mesi"><caption>Per mese</caption><tbody>${ultimiMesi.map((m) => `<tr><th scope="row">${MESI_BREVI[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}</th><td>${formattaEuro(mesi.get(m))}</td></tr>`).join("")}</tbody></table>`;
 }
 
 // ---------------------------------------------------------------- copia di sicurezza
@@ -1615,6 +1656,7 @@ document.getElementById("schede").addEventListener("click", (e) => {
 function vaiAScheda(scheda) {
   S.scheda = scheda;
   S.scambio = null;
+  S.capitolo = null;
   if (scheda === "menu") S.settimana = lunediDi(oggiISO());
   disegna();
   window.scrollTo(0, 0);
@@ -1690,6 +1732,8 @@ document.addEventListener("click", async (e) => {
       archivio.elimina("ricetteUtente", id); chiudiModale(); avviso("Ricetta eliminata"); break;
     case "chiudi": chiudiModale(); break;
     case "vai-menu": vaiAScheda("menu"); break;
+    case "apri-capitolo": apriCapitolo(el.dataset.capitolo); break;
+    case "chiudi-capitolo": chiudiCapitolo(); break;
     case "tipi-predefiniti": {
       const f = el.closest("form");
       for (const t of TIPI_PIATTO) {

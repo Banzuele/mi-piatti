@@ -368,6 +368,34 @@ ul.ingredienti li { display: flex; justify-content: space-between; gap: 8px; pad
 .pannello:nth-of-type(5n+4) { background: var(--p-lavanda); }
 .pannello:nth-of-type(5n+5) { background: var(--p-pesca); }
 .pannello { border-color: transparent; }
+/* Altro: elenco compatto dei capitoli; toccandone uno si apre il dettaglio */
+.capitoli { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.capitolo {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px;
+  padding: 8px 6px 8px 10px; border: 0; border-radius: var(--raggio);
+  background: var(--carta); color: var(--testo); font: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.capitolo:active { filter: brightness(.95); }
+.ico-cap {
+  flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--carta);
+}
+.ico-cap .ic { width: 22px; height: 22px; }
+.testo-cap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; line-height: 1.25; }
+.testo-cap strong { font-size: 16px; }
+.testo-cap small { color: var(--tenue); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.freccia-cap { flex: none; font-size: 26px; line-height: 1; color: var(--tenue); padding: 0 4px; }
+.c-menta { background: var(--p-menta); } .c-cielo { background: var(--p-cielo); } .c-giallo { background: var(--p-giallo); }
+.c-lavanda { background: var(--p-lavanda); } .c-pesca { background: var(--p-pesca); }
+.pannello.capitolo-aperto { padding-top: 14px; }
+.pannello.c-menta { background: var(--p-menta); } .pannello.c-cielo { background: var(--p-cielo); } .pannello.c-giallo { background: var(--p-giallo); }
+.pannello.c-lavanda { background: var(--p-lavanda); } .pannello.c-pesca { background: var(--p-pesca); }
+/* titolo del capitolo nella barra, con la freccia per tornare all'elenco */
+.riga-capitolo { justify-content: flex-start; }
+.riga-capitolo strong { flex: 1; min-width: 0; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.riga-capitolo .freccia-sett { margin-left: -10px; }
+.barra-fissa .riga-capitolo .ic .a { fill: var(--ambra); }
 .form-casa, .form-imp { display: grid; gap: 8px; }
 .form-casa { grid-template-columns: 1fr 1fr; }
 .form-casa .btn { grid-column: 1 / -1; }
