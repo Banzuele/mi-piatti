@@ -132,6 +132,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .giorno {
   background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio);
   margin-bottom: 10px; overflow: hidden;
+  scroll-margin-top: calc(10px + env(safe-area-inset-top)); /* giorno di oggi portato in cima, sotto il notch */
 }
 .giorno.oggi { border-color: var(--primario); box-shadow: 0 0 0 1px var(--primario); }
 .giorno > header {

@@ -141,3 +141,15 @@ test("spesa: i prodotti presi vanno in fondo al loro reparto", async () => {
   ];
   assert.deepEqual(spuntatiInFondo(voci).map((v) => v.nome), ["Patate", "Zucchine", "Carote", "Pere", "Mele"]);
 });
+
+test("Menù e Lista partono sempre da lunedì", async () => {
+  const { lunediDi, lunediDopo, giorniSettimana } = await import("../js/calendario.js");
+  assert.equal(lunediDi("2026-11-26"), "2026-11-23"); // giovedì
+  assert.equal(lunediDi("2026-11-23"), "2026-11-23"); // lunedì
+  assert.equal(lunediDi("2026-11-29"), "2026-11-23"); // domenica
+  assert.equal(lunediDi("2026-11-28"), "2026-11-23"); // sabato
+  assert.equal(giorniSettimana(lunediDi("2026-11-26"))[6], "2026-11-29");
+  // settimane salvate prima (dal sabato) si vedono nel lunedì subito dopo
+  assert.equal(lunediDopo("2026-11-21"), "2026-11-23");
+  assert.equal(lunediDopo("2026-11-23"), "2026-11-23");
+});

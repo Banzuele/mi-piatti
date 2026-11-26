@@ -2,7 +2,7 @@
 
 > **Regola del progetto: ogni modifica deve funzionare sia su Android (Chrome) sia su iPhone/iPad (Safari, app installata dalla schermata Home).** Vedi [`CLAUDE.md`](CLAUDE.md) per la lista dei controlli.
 
-App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena, da sabato a venerdì) e la **lista della spesa** ordinata come i reparti Esselunga. Menù e spesa sono condivisi tra due telefoni in tempo reale e funzionano anche senza rete.
+App per il telefono (PWA) che prepara il **menù di 4 settimane** (pranzo e cena; Menù e Lista mostrano sempre la settimana da lunedì a domenica e all'apertura il Menù scorre al giorno di oggi) e la **lista della spesa** ordinata come i reparti Esselunga. Menù e spesa sono condivisi tra due telefoni in tempo reale e funzionano anche senza rete.
 
 ## Cosa fa
 
@@ -71,7 +71,7 @@ node --test test/*.test.mjs   # test della logica (menù, festività, spesa, spo
 
 | File | Contenuto |
 |---|---|
-| `js/calendario.js` | settimane dal giorno della spesa (di solito sab-ven), festività, stagioni, deperibilità, porzioni |
+| `js/calendario.js` | settimane da lunedì a domenica, deperibilità contata dal giorno della spesa, festività, stagioni, deperibilità, porzioni |
 | `js/pianificatore.js` | generazione e sostituzione dei pasti |
 | `js/spesa.js` | lista della spesa e testo da copiare |
 | `js/prezzi.js` | prezzi pagati: prezzo unitario, media, andamento |
