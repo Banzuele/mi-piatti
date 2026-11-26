@@ -1256,11 +1256,18 @@ function chiudiModale() {
 document.getElementById("schede").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-scheda]");
   if (!b) return;
-  S.scheda = b.dataset.scheda;
+  vaiAScheda(b.dataset.scheda);
+});
+// Passando da una scheda all'altra si riparte dall'alto; il Menù torna sempre
+// alla settimana in corso con il giorno di oggi in cima.
+function vaiAScheda(scheda) {
+  S.scheda = scheda;
   S.scambio = null;
+  if (scheda === "menu") S.settimana = lunediDi(oggiISO());
   disegna();
   window.scrollTo(0, 0);
-});
+  if (scheda === "menu") mostraOggi();
+}
 
 $modale.addEventListener("click", (e) => { if (e.target === $modale) chiudiModale(); });
 
@@ -1325,7 +1332,7 @@ document.addEventListener("click", async (e) => {
     case "ed-elimina":
       archivio.elimina("ricetteUtente", id); chiudiModale(); avviso("Ricetta eliminata"); break;
     case "chiudi": chiudiModale(); break;
-    case "vai-menu": S.scheda = "menu"; disegna(); break;
+    case "vai-menu": vaiAScheda("menu"); break;
     case "tema": impostaTema(el.dataset.valore); disegna(); break;
     case "filtro-pasto": S.filtroPasto = el.dataset.valore; disegna(); break;
     case "filtro-stagione": S.filtroStagione = el.dataset.valore; disegna(); break;
