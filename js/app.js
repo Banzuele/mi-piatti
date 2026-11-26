@@ -11,10 +11,13 @@ import {
   deperibilitaCompatibile, motivoNoSpostamento as motivoNoSpost,
   TIPI_PIATTO, regoleSettimana, contaTipiSettimana, costoPorzione, costoSettimana,
 } from "./pianificatore.js";
+import { ico, ICONA_PROTEINA_NOME } from "./icone.js";
+import { promemoriaDomani } from "./promemoria.js";
+import { creaBackup, leggiBackup, nomeFileBackup } from "./backup.js";
 import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita, spuntatiInFondo } from "./spesa.js";
 import {
   chiaveProdotto, leggiNumero, prezzoUnitario, pulisciPrezzo, storico, statistiche, formattaEuro, formattaUnitario,
-  costoVoce, UNITA_PREZZO,
+  costoVoce, UNITA_PREZZO, spesaReale,
 } from "./prezzi.js";
 
 // ---------------------------------------------------------------- stato
@@ -80,11 +83,8 @@ function costiRicette() {
 }
 const idCasuale = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-const ICONA_PROTEINA = {
-  "Carne bianca": "🐔", "Carne rossa": "🥩", Pesce: "🐟", Uova: "🥚",
-  Formaggi: "🧀", Legumi: "🫘", Nessuna: "🌾",
-};
-const PASTO = { pranzo: { nome: "Pranzo", ico: "☀️" }, cena: { nome: "Cena", ico: "🌙" } };
+const ICONA_PROTEINA = Object.fromEntries(Object.entries(ICONA_PROTEINA_NOME).map(([p, n]) => [p, ico(n)]));
+const PASTO = { pranzo: { nome: "Pranzo", ico: ico("pranzo") }, cena: { nome: "Cena", ico: ico("cena") } };
 
 function avviso(testo, ms = 2500) {
   const el = document.getElementById("avviso");
@@ -215,21 +215,22 @@ function impostaTema(t) {
 // Stato della sincronizzazione: piccola etichetta in cima a ogni pagina
 // (sotto le date della settimana nel Menù e nella Spesa).
 function testoStato() {
-  if (S.aggiornando) return "Aggiorno…";
-  if (archivio.modalita === "locale") return "📱 Solo su questo telefono";
-  if (!S.utente) return "";
-  if (!navigator.onLine) return "📴 Offline: salvo e sincronizzo dopo";
-  return S.inAttesa ? "⏳ Sincronizzo…" : "☁️ Sincronizzato";
+  if (S.aggiornando) return ["", "Aggiorno…"];
+  if (archivio.modalita === "locale") return ["telefono", "Solo su questo telefono"];
+  if (!S.utente) return ["", ""];
+  if (!navigator.onLine) return ["offline", "Offline: salvo e sincronizzo dopo"];
+  return S.inAttesa ? ["clessidra", "Sincronizzo…"] : ["nuvola", "Sincronizzato"];
 }
+const htmlStato = () => { const [i, t] = testoStato(); return t ? `${ico(i)} ${esc(t)}` : ""; };
 function disegnaStato() {
-  const t = testoStato();
+  const t = htmlStato();
   document.querySelectorAll(".stato-sync").forEach((el) => {
-    el.textContent = t;
+    el.innerHTML = t;
     el.classList.toggle("carica", S.aggiornando);
   });
 }
 // durante l'aggiornamento (trascinando giù la pagina) al posto della nuvola c'è una rotellina
-const statoSync = () => `<span class="stato-sync${S.aggiornando ? " carica" : ""}">${esc(testoStato())}</span>`;
+const statoSync = () => `<span class="stato-sync${S.aggiornando ? " carica" : ""}">${htmlStato()}</span>`;
 
 const ORDINE_SCHEDE = ["menu", "spesa", "ricette", "altro"];
 function disegna() {
@@ -284,7 +285,7 @@ document.addEventListener("visibilitychange", () => {
 function vistaAccesso() {
   if (archivio.modalita !== "cloud") return "";
   return `<div class="accesso">
-    <div class="logo">🍽️</div>
+    <div class="logo">${ico("piatto")}</div>
     <h2>Benvenuti in Mi-Piatti</h2>
     <p>Accedete con il vostro account Google per condividere menù e spesa.</p>
     <button class="btn primario" data-azione="accedi">Accedi con Google</button>
@@ -310,10 +311,10 @@ function invitoInstalla() {
   if (installata()) return "";
   try { if (localStorage.getItem(NASCONDI_INSTALLA)) return ""; } catch { /* niente */ }
   return `<div class="banner invito-installa">
-    <span>📲 Installa Mi-Piatti sul telefono: si apre come un'app e funziona anche senza rete.</span>
+    <span>${ico("installa")} Installa Mi-Piatti sul telefono: si apre come un'app e funziona anche senza rete.</span>
     <span class="azioni-invito">
       <button class="btn piccolo primario" data-azione="installa">${richiestaInstalla ? "Installa" : "Come"}</button>
-      <button class="btn-ico piccolo" data-azione="nascondi-installa" aria-label="Non mostrare più">✕</button>
+      <button class="btn-ico piccolo" data-azione="nascondi-installa" aria-label="Non mostrare più">${ico("chiudi")}</button>
     </span>
   </div>`;
 }
@@ -321,7 +322,7 @@ function invitoInstalla() {
 function istruzioniIOS() {
   return `<ol class="passi">
     <li>Apri <strong>banzuele.github.io/mi-piatti</strong> con <strong>Safari</strong>.</li>
-    <li>Tocca <strong>Condividi</strong> <span class="simbolo" aria-hidden="true">⬆︎</span>
+    <li>Tocca <strong>Condividi</strong> <span class="simbolo" aria-hidden="true">${ico("condividi")}</span>
       (il quadrato con la freccia; su iOS 26 è nel menu <strong>⋯</strong> in basso).</li>
     <li>Scorri e scegli <strong>Aggiungi alla schermata Home</strong>. Se compare, lascia attivo <strong>Apri come app web</strong>.</li>
     <li>Tocca <strong>Aggiungi</strong>, poi apri Mi-Piatti dall'icona con i tre piatti.</li>
@@ -336,7 +337,7 @@ function istruzioniAndroid() {
   </ol>`;
 }
 function vistaInstalla(pannello) {
-  if (installata()) return pannello ? `<p>✅ Stai usando l'app installata.</p>` : "";
+  if (installata()) return pannello ? `<p>${ico("ok")} Stai usando l'app installata.</p>` : "";
   const ios = suIOS();
   return `${!pannello ? "<h2>Installa sul telefono</h2>" : ""}
     ${richiestaInstalla ? `<button class="btn primario largo" data-azione="installa-ora">Installa Mi-Piatti</button>` : ""}
@@ -382,9 +383,22 @@ function riepilogoSettimana(giorni) {
   });
   const budget = Number(I.budget) > 0 ? Number(I.budget) : 0;
   if (tot) {
-    chip.push(`<span class="chip ${budget && tot > budget ? "ko" : ""}" title="Costo dei piatti della settimana (dosi usate)">💶 ≈ ${Math.round(tot)} €${budget ? ` / ${budget} €` : ""}</span>`);
+    chip.push(`<span class="chip ${budget && tot > budget ? "ko" : ""}" title="Costo dei piatti della settimana (dosi usate)">${ico("euro")} ≈ ${Math.round(tot)} €${budget ? ` / ${budget} €` : ""}</span>`);
   }
   return `<div class="chip-riga scorre riepilogo" aria-label="Riepilogo della settimana">${chip.join("")}</div>`;
+}
+
+// Promemoria per domani, in cima al giorno di oggi
+function vistaPromemoria() {
+  const lista = promemoriaDomani({
+    oggi: oggiISO(), pasti: S.pasti, piano: piano(), ricettePerId: S.ricettePerId,
+    alimentiPerId: S.alimentiPerId, giorniCasa: S.giorniCasa, imp: imp(), molt: (k) => moltPasto(k).valore,
+  });
+  if (!lista.length) return "";
+  return `<div class="promemoria" role="note" aria-label="Promemoria per domani">
+    <strong>${ico("campanella")} Per domani</strong>
+    <ul>${lista.map((x) => `<li>${ico(x.ico)}<span>${esc(x.testo)}</span></li>`).join("")}</ul>
+  </div>`;
 }
 
 function vistaMenu() {
@@ -410,19 +424,19 @@ function vistaMenu() {
       <header><strong>${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</strong>
         ${info.motivo ? `<span class="etichetta casa">${esc(info.motivo)}</span>` : ""}
         <span class="etichetta dep-${info.deperibilita.toLowerCase()}" title="Deperibilità">${info.deperibilita}</span>
-      </header>`;
+      </header>${d === oggi ? vistaPromemoria() : ""}`;
     for (const p of PASTI) {
       const k = chiavePasto(d, p);
       const r = S.ricettePerId.get(P[k]);
       const avanzi = !!S.pasti[k]?.avanzi;
       const sel = S.scambio === k ? "selezionato" : "";
       const m = moltPasto(k);
-      const info2 = avanzi ? (r ? "🍱 Avanzi della cena di ieri" : "")
-        : r ? `${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min${p === "cena" && cenaConAvanzi(k) ? " · 🍱 anche per il pranzo di domani" : ""}` : "";
+      const info2 = avanzi ? (r ? `${ico("avanzi")} Avanzi della cena di ieri` : "")
+        : r ? `${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min${p === "cena" && cenaConAvanzi(k) ? ` · ${ico("avanzi")} anche per il pranzo di domani` : ""}` : "";
       h += `<div class="pasto-riga ${sel} ${avanzi ? "avanzi" : ""}" data-chiave="${k}">
-      ${r && !avanzi ? `<span class="maniglia" data-chiave="${k}" role="button" aria-label="Tieni premuto per spostare" title="Tieni premuto per spostare">☰</span>` : `<span class="maniglia vuota"></span>`}
+      ${r && !avanzi ? `<span class="maniglia" data-chiave="${k}" role="button" aria-label="Tieni premuto per spostare" title="Tieni premuto per spostare">${ico("maniglia")}</span>` : `<span class="maniglia vuota"></span>`}
       <button class="pasto" data-azione="pasto" data-chiave="${k}">
-        <span class="pasto-ico">${avanzi ? "🍱" : PASTO[p].ico}</span>
+        <span class="pasto-ico">${avanzi ? ico("avanzi") : PASTO[p].ico}</span>
         <span class="pasto-testo">
           <span class="pasto-nome">${r ? esc(r.nome) : avanzi ? "<em>Avanzi: manca la cena di ieri</em>" : "<em>— da scegliere —</em>"}</span>
           ${info2 ? `<span class="pasto-info">${info2}</span>` : ""}
@@ -452,7 +466,7 @@ function apriGenera() {
         `<option value="${n}" ${n === 4 ? "selected" : ""}>${n} ${n === 1 ? "settimana" : "settimane"}</option>`).join("")}</select>
     </label>
     <p class="nota">I pasti già presenti in queste settimane verranno sostituiti. Le spunte della spesa restano.</p>
-    ${Number(imp().cenaDoppia) === 1 ? `<p class="nota">🍱 Cena doppia attiva: nei giorni feriali il pranzo è fatto con gli avanzi della cena prima (si cambia in Altro).</p>` : ""}
+    ${Number(imp().cenaDoppia) === 1 ? `<p class="nota">${ico("avanzi")} Cena doppia attiva: nei giorni feriali il pranzo è fatto con gli avanzi della cena prima (si cambia in Altro).</p>` : ""}
     <div class="azioni-modale">
       <button class="btn" data-azione="chiudi">Annulla</button>
       <button class="btn primario" data-azione="genera">Genera</button>
@@ -498,15 +512,15 @@ function apriPasto(k) {
   // avanzi della cena di ieri: possibili per un pranzo se ieri sera c'è una ricetta
   const cenaIeri = S.pasti[cenaDiIeri(k)];
   const puoAvanzi = p === "pranzo" && !avanzi && cenaIeri?.ricetta && !cenaIeri.avanzi;
-  apriModale(`<h2>${avanzi ? "🍱" : PASTO[p].ico} ${PASTO[p].nome} · ${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</h2>
+  apriModale(`<h2>${avanzi ? ico("avanzi") : PASTO[p].ico} ${PASTO[p].nome} · ${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</h2>
     ${r ? `<p class="sottotitolo">${avanzi ? "Avanzi della cena di ieri: " : ""}${esc(r.nome)}</p>` : ""}
     <div class="lista-azioni">
-      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${avanzi ? cenaDiIeri(k) : k}">📖 Vedi ricetta e dosi</button>` : ""}
-      ${puoAvanzi ? `<button class="btn largo" data-azione="usa-avanzi" data-chiave="${k}">🍱 Usa gli avanzi della cena di ieri</button>` : ""}
-      <button class="btn largo" data-azione="cambia" data-chiave="${k}">🎲 ${avanzi ? "Cucina un piatto (proposta automatica)" : "Cambia (proposta automatica)"}</button>
-      <button class="btn largo" data-azione="scegli" data-chiave="${k}">📋 Scegli dall'elenco</button>
-      ${r && !avanzi ? `<button class="btn largo" data-azione="scambia" data-chiave="${k}">🔁 Scambia con un altro giorno</button>` : ""}
-      ${r || avanzi ? `<button class="btn largo pericolo" data-azione="svuota" data-chiave="${k}">🗑️ Togli questo pasto</button>` : ""}
+      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${avanzi ? cenaDiIeri(k) : k}">${ico("libro")} Vedi ricetta e dosi</button>` : ""}
+      ${puoAvanzi ? `<button class="btn largo" data-azione="usa-avanzi" data-chiave="${k}">${ico("avanzi")} Usa gli avanzi della cena di ieri</button>` : ""}
+      <button class="btn largo" data-azione="cambia" data-chiave="${k}">${ico("dado")} ${avanzi ? "Cucina un piatto (proposta automatica)" : "Cambia (proposta automatica)"}</button>
+      <button class="btn largo" data-azione="scegli" data-chiave="${k}">${ico("elenco")} Scegli dall'elenco</button>
+      ${r && !avanzi ? `<button class="btn largo" data-azione="scambia" data-chiave="${k}">${ico("scambia")} Scambia con un altro giorno</button>` : ""}
+      ${r || avanzi ? `<button class="btn largo pericolo" data-azione="svuota" data-chiave="${k}">${ico("cestino")} Togli questo pasto</button>` : ""}
     </div>
     <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
 }
@@ -590,7 +604,7 @@ function fineTrascina(st, x, y, annulla) {
     }
   } else {
     S.trascina = null;
-    if (!annulla) avviso("Tieni premuto ☰ per spostare il pasto");
+    if (!annulla) avviso("Tieni premute le tre righe a sinistra per spostare il pasto");
   }
   if (S.daRidisegnare) { S.daRidisegnare = false; disegna(); }
 }
@@ -690,7 +704,7 @@ function disegnaEditor() {
           `<option value="${esc(x.id)}" ${x.id === i.id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>
         <input name="ingr-q" data-i="${n}" type="number" min="0" step="any" inputmode="decimal" value="${esc(i.q)}" placeholder="qtà">
         <span class="unita">${a ? esc(NOMI_UNITA[a.unita] || a.unita) : ""}</span>
-        <button type="button" class="btn-ico piccolo" data-azione="ed-togli-ingr" data-i="${n}" aria-label="Togli">✕</button>
+        <button type="button" class="btn-ico piccolo" data-azione="ed-togli-ingr" data-i="${n}" aria-label="Togli">${ico("chiudi")}</button>
       </div>`;
     }).join("")}</div>
     <div class="azioni-riga">
@@ -713,10 +727,10 @@ function disegnaEditor() {
   </form>
   ${orig ? `<div class="lista-azioni">
     ${orig.nascosta
-      ? `<button class="btn largo" data-azione="ed-mostra" data-id="${esc(orig.id)}">👁️ Torna a proporla nel menù</button>`
-      : `<button class="btn largo" data-azione="ed-nascondi" data-id="${esc(orig.id)}">🙈 Non proporla più nel menù</button>`}
-    ${orig.modificata ? `<button class="btn largo" data-azione="ed-ripristina" data-id="${esc(orig.id)}">↺ Torna alla versione originale</button>` : ""}
-    ${orig.mia ? `<button class="btn largo pericolo" data-azione="ed-elimina" data-id="${esc(orig.id)}">🗑️ Elimina la ricetta</button>` : ""}
+      ? `<button class="btn largo" data-azione="ed-mostra" data-id="${esc(orig.id)}">${ico("occhio")} Torna a proporla nel menù</button>`
+      : `<button class="btn largo" data-azione="ed-nascondi" data-id="${esc(orig.id)}">${ico("nascondi")} Non proporla più nel menù</button>`}
+    ${orig.modificata ? `<button class="btn largo" data-azione="ed-ripristina" data-id="${esc(orig.id)}">${ico("ripristina")} Torna alla versione originale</button>` : ""}
+    ${orig.mia ? `<button class="btn largo pericolo" data-azione="ed-elimina" data-id="${esc(orig.id)}">${ico("cestino")} Elimina la ricetta</button>` : ""}
   </div>` : ""}
   <div class="azioni-modale">
     <button class="btn" data-azione="chiudi">Annulla</button>
@@ -867,20 +881,20 @@ function vediRicetta(id, k) {
     ${r.mia ? `<p class="nota">Ricetta aggiunta da voi.</p>` : r.modificata ? `<p class="nota">Ricetta modificata da voi.</p>` : ""}
     <div class="chip-riga">
       <span class="chip">${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)}</span>
-      <span class="chip">⏱️ ${r.tempoPrep} min attivi · ${r.tempoTotale} min totali</span>
+      <span class="chip">${ico("orologio")} ${r.tempoPrep} min attivi · ${r.tempoTotale} min totali</span>
       <span class="chip">Deperibilità ${esc(r.deperibilita)}</span>
       <span class="chip">${r.stagioni.length === 4 ? "Tutto l'anno" : esc(r.stagioni.join(", "))}</span>
     </div>
     ${fuori ? `<p class="nota avvertenza">Supera i limiti di tempo (${imp().maxPrep} min attivi, ${imp().maxTotale} totali): non viene proposta nel menù.</p>` : ""}
     <h3>Ingredienti ${molt === 1 ? "(1 porzione)" : `(×${num(molt)} porzioni)`}</h3>
-    ${perAvanzi ? `<p class="nota">🍱 Comprende ×${num(perAvanzi)} per il pranzo di domani: mettilo da parte prima di servire.</p>` : ""}
+    ${perAvanzi ? `<p class="nota">${ico("avanzi")} Comprende ×${num(perAvanzi)} per il pranzo di domani: mettilo da parte prima di servire.</p>` : ""}
     <ul class="ingredienti">${righe}</ul>
     ${r.contorno ? `<p class="nota">Contorno e frutta: ${esc(r.contorno)}</p>` : ""}
     ${r.procedimento?.length ? `<h3>Procedimento</h3>
     <ol class="procedimento">${r.procedimento.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>` : ""}
     ${r.link ? `<p><a href="${esc(linkSicuro(r.link))}" target="_blank" rel="noopener noreferrer">Apri la ricetta online ↗</a></p>` : ""}
     <div class="azioni-modale">
-      <button class="btn" data-azione="modifica-ricetta" data-id="${esc(r.id)}">✏️ Modifica</button>
+      <button class="btn" data-azione="modifica-ricetta" data-id="${esc(r.id)}">${ico("matita")} Modifica</button>
       <button class="btn" data-azione="chiudi">Chiudi</button>
     </div>`);
 }
@@ -967,7 +981,7 @@ function rigaPrezzo(v) {
     const stima = stimaDi(v);
     if (!stima) return "";
     const c = costoVoce({ stima, quantita: quantitaComprata(v), unita: v.unita });
-    return `<button type="button" class="voce-prezzo stima" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">💶 stima ${formattaUnitario({ valore: stima, unita: UNITA_PREZZO[v.unita] || "pz" })}${c ? ` · ~${formattaEuro(c.valore)}` : ""}</button>`;
+    return `<button type="button" class="voce-prezzo stima" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">${ico("euro")} stima ${formattaUnitario({ valore: stima, unita: UNITA_PREZZO[v.unita] || "pz" })}${c ? ` · ~${formattaEuro(c.valore)}` : ""}</button>`;
   }
   const parti = [];
   if (pagato) parti.push(`pagato ${formattaEuro(pagato.prezzo)}`);
@@ -976,7 +990,7 @@ function rigaPrezzo(v) {
     parti.push(`media ${formattaUnitario(unitarioMedio(st))}`);
   }
   const fr = st?.tendenza ? FRECCE[st.tendenza] : null;
-  return `<button type="button" class="voce-prezzo${fr ? ` tend-${st.tendenza}` : ""}" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">💶 ${esc(parti.join(" · "))}${fr ? ` <b title="${fr[1]}">${fr[0]}</b>` : ""}</button>`;
+  return `<button type="button" class="voce-prezzo${fr ? ` tend-${st.tendenza}` : ""}" data-azione="apri-prezzo" data-chiave="${esc(v.chiave)}">${ico("euro")} ${esc(parti.join(" · "))}${fr ? ` <b title="${fr[1]}">${fr[0]}</b>` : ""}</button>`;
 }
 
 function apriPrezzo(chiave) {
@@ -998,7 +1012,7 @@ function apriPrezzo(chiave) {
     : costoVoce({ pagato: null, st, stima: stimaDi(v), quantita, unita });
   const numVal = esistente ? esistente.prezzo : proposta ? Math.round(proposta.valore * 100) / 100 : null;
   const valore = numVal ? numVal.toFixed(2).replace(".", ",") : "";
-  apriModale(`<h2>💶 ${esc(v.nome)}</h2>
+  apriModale(`<h2>${ico("euro")} ${esc(v.nome)}</h2>
   <form class="editor" data-azione="salva-prezzo">
     <div class="griglia-2">
       <label>Prezzo pagato (€) <input id="prezzo-valore" name="prezzo" inputmode="decimal" autocomplete="off" placeholder="es. 2,49" value="${esc(valore)}"></label>
@@ -1120,7 +1134,7 @@ function aggiornaSuggerimenti() {
     .slice(0, 6);
   ul.innerHTML = trovati.map(({ a }) => `<li><button type="button" data-azione="scegli-prodotto" data-id="${esc(a.id)}">
       ${esc(a.nome)} <small>${NOMI_UNITA_LUNGHI[a.unita] || a.unita} · ${esc(REPARTI.find((r) => r.id === a.reparto)?.nome || "")}</small></button></li>`).join("")
-    + (trovati.some(({ n }) => n === q) ? "" : `<li class="nuovo">➕ Nuovo prodotto "${esc(inp.value.trim())}": scegli unità e reparto qui sotto</li>`);
+    + (trovati.some(({ n }) => n === q) ? "" : `<li class="nuovo">${ico("piu")} Nuovo prodotto "${esc(inp.value.trim())}": scegli unità e reparto qui sotto</li>`);
 }
 
 function scegliProdotto(id) {
@@ -1191,17 +1205,17 @@ function vistaSpesa() {
   const negozio = modalitaNegozio();
   const daPrezzare = senzaPrezzo(tutte).length;
   h += `<div class="area-comandi"><div class="azioni-spesa">
-    ${"share" in navigator ? `<button class="btn piccolo" data-azione="condividi-spesa">📤 Condividi</button>` : ""}
-    <button class="btn piccolo" data-azione="copia-spesa">📋 Copia</button>
-    <button class="btn piccolo" data-azione="azzera-spunte">↺ Togli le spunte</button>
+    ${"share" in navigator ? `<button class="btn piccolo" data-azione="condividi-spesa">${ico("condividi")} Condividi</button>` : ""}
+    <button class="btn piccolo" data-azione="copia-spesa">${ico("elenco")} Copia</button>
+    <button class="btn piccolo" data-azione="azzera-spunte">${ico("ripristina")} Togli le spunte</button>
   </div>
   <div class="barra-spesa">
     <span>${presi}/${voci.length} presi${testoTotaleSpesa(voci)}</span>
     <label class="interruttore"><input type="checkbox" data-azione="dispensa" ${S.mostraDispensa ? "checked" : ""}> Mostra dispensa</label>
   </div>
   <div class="barra-spesa">
-    <label class="interruttore"><input type="checkbox" data-azione="negozio" ${negozio ? "checked" : ""}> 🛒 Modalità negozio</label>
-    ${daPrezzare ? `<button class="btn piccolo primario" data-azione="conferma-prezzi">💶 Conferma i prezzi (${daPrezzare})</button>` : ""}
+    <label class="interruttore"><input type="checkbox" data-azione="negozio" ${negozio ? "checked" : ""}> ${ico("carrello")} Modalità negozio</label>
+    ${daPrezzare ? `<button class="btn piccolo primario" data-azione="conferma-prezzi">${ico("euro")} Conferma i prezzi (${daPrezzare})</button>` : ""}
   </div>
   ${negozio ? `<p class="nota">Spunta e vai avanti: i prezzi li confermi tutti insieme alla fine.</p>` : ""}</div>`;
   if (!tutte.length) {
@@ -1214,7 +1228,7 @@ function vistaSpesa() {
       if (reparto !== null) h += `</ul>`;
       dopo = true;
       reparto = null;
-      h += `<h2 class="compra-dopo">🗓️ ${esc(titoloCompraDopo(giornoCompraDopo()))}</h2>
+      h += `<h2 class="compra-dopo">${ico("calendario")} ${esc(titoloCompraDopo(giornoCompraDopo()))}</h2>
         <p class="nota">Freschi per i pasti da ${esc(GIORNI_LUNGHI[giornoSettimana(giornoCompraDopo())].toLowerCase())} a domenica: comprali il giorno della spesa, così sono freschi.</p>`;
     }
     if (v.reparto !== reparto) {
@@ -1231,7 +1245,7 @@ function vistaSpesa() {
           ${rigaPrezzo(v)}
         </span>
       </label>
-      ${v.extra ? `<button class="btn-ico piccolo" data-azione="togli-extra" data-id="${esc(v.id)}" aria-label="Togli">✕</button>` : ""}
+      ${v.extra ? `<button class="btn-ico piccolo" data-azione="togli-extra" data-id="${esc(v.id)}" aria-label="Togli">${ico("chiudi")}</button>` : ""}
     </li>`;
   }
   if (reparto !== null) h += `</ul>`;
@@ -1254,7 +1268,7 @@ function apriConfermaPrezzi() {
         <span class="voce-dett">${esc(formattaQuantita(quantita, v.unita))}${prop ? ` · ${prop.fonte === "stima" ? "stima" : "ultimo prezzo"}` : ""}${st ? ` · media ${formattaUnitario(unitarioMedio(st))}` : ""}</span></span>
       <input name="${esc(v.chiave)}" class="prezzo-riga" inputmode="decimal" autocomplete="off" placeholder="€" value="${esc(val)}" aria-label="Prezzo di ${esc(v.nome)}"></li>`;
   }).join("");
-  apriModale(`<h2>💶 Conferma i prezzi</h2>
+  apriModale(`<h2>${ico("euro")} Conferma i prezzi</h2>
   <form class="editor" data-azione="salva-prezzi">
     <p class="nota">Prezzi proposti dall'ultimo acquisto o dalla stima: correggi quelli diversi dallo scontrino. Lascia vuoto per non registrare un prezzo.</p>
     <ul class="conferma-prezzi">${righe}</ul>
@@ -1286,7 +1300,7 @@ function salvaPrezziInBlocco(dati) {
 }
 
 // ---------------------------------------------------------------- ricette
-const NOMI_STAGIONI = { primavera: "🌸 Primavera", estate: "☀️ Estate", autunno: "🍂 Autunno", inverno: "❄️ Inverno" };
+const NOMI_STAGIONI = { primavera: `${ico("primavera")} Primavera`, estate: `${ico("pranzo")} Estate`, autunno: `${ico("autunno")} Autunno`, inverno: `${ico("inverno")} Inverno` };
 function vistaRicette() {
   const filtri = [["tutti", "Tutte"], ["pranzo", "Pranzi"], ["cena", "Cene"]];
   return `<div class="barra-fissa">
@@ -1338,7 +1352,7 @@ function vistaAltro() {
   return `<div class="barra-fissa"><div class="riga-titolo"><strong>Altro</strong>${statoSync()}</div></div>
   <section class="pannello">
     <h2>Tema</h2>
-    <div class="scelta-tema" role="group" aria-label="Tema">${[["auto", "Automatico"], ["chiaro", "☀️ Chiaro"], ["scuro", "🌙 Scuro"]].map(([v, t]) =>
+    <div class="scelta-tema" role="group" aria-label="Tema">${[["auto", "Automatico"], ["chiaro", `${ico("pranzo")} Chiaro`], ["scuro", `${ico("cena")} Scuro`]].map(([v, t]) =>
       `<button class="chip ${tema === v ? "attivo" : ""}" data-azione="tema" data-valore="${v}" aria-pressed="${tema === v}">${t}</button>`).join("")}</div>
     <p class="nota">Automatico segue l'impostazione del telefono. La scelta vale solo su questo telefono.</p>
   </section>
@@ -1368,7 +1382,7 @@ function vistaAltro() {
     <ul class="elenco-casa">${gruppi.filter((g) => g.al >= aggiungiGiorni(oggi, -30)).map((g) => `
       <li><span><strong>${g.dal === g.al ? formattaGiornoMese(g.dal) : `${formattaGiornoMese(g.dal)} – ${formattaGiornoMese(g.al)}`}</strong>
         ${esc(nomeTipo[g.tipo] || g.tipo)}${g.nota ? ` · ${esc(g.nota)}` : ""}</span>
-        <button class="btn-ico piccolo" data-azione="togli-casa" data-giorni="${esc(g.giorni.join(","))}" aria-label="Togli">✕</button></li>`).join("")
+        <button class="btn-ico piccolo" data-azione="togli-casa" data-giorni="${esc(g.giorni.join(","))}" aria-label="Togli">${ico("chiudi")}</button></li>`).join("")
       || "<li class='nota'>Nessun giorno inserito.</li>"}</ul>
     <details><summary>Prossime festività</summary>
       <ul class="elenco-casa">${feste.map((f) => `<li><span><strong>${formattaGiornoMese(f.data)} ${f.data.slice(0, 4)}</strong> ${esc(f.nome)}</span></li>`).join("")}</ul>
@@ -1404,6 +1418,18 @@ function vistaAltro() {
     </form>
   </section>
 
+  ${vistaSpesaReale()}
+
+  <section class="pannello">
+    <h2>${ico("scarica")} Copia di sicurezza</h2>
+    <p class="nota">Salva in un file menù, spesa, giorni a casa, impostazioni, ricette vostre e prezzi. Ricaricandola i dati del file si aggiungono a quelli dell'app (quelli con lo stesso giorno o nome vengono sostituiti).</p>
+    <div class="azioni-backup">
+      <button class="btn" data-azione="backup-scarica">${ico("scarica")} Scarica la copia</button>
+      <label class="btn">${ico("carica")} Ricarica una copia…<input type="file" class="nascosto" accept=".json,application/json" data-azione="backup-file"></label>
+    </div>
+    ${suIOS() ? `<p class="nota">Su iPhone si apre Condividi: scegli <strong>Salva su File</strong>.</p>` : ""}
+  </section>
+
   <section class="pannello">
     <h2>Impostazioni</h2>
     <form class="form-imp" data-azione="salva-imp">
@@ -1421,6 +1447,90 @@ function vistaAltro() {
     </form>
   </section>
   <p class="nota centro">Mi-Piatti ${document.documentElement.dataset.versione || ""} · ${S.ricette.length} ricette · ${S.alimenti.length} alimenti</p>`;
+}
+
+// Quanto si spende davvero: totale dei prezzi scritti nella Spesa, per
+// settimana (ultime 8, con il budget) e per mese (ultimi 6). Niente stime.
+const MESI_BREVI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+function vistaSpesaReale() {
+  const { settimane, mesi } = spesaReale(S.prezzi, lunediDi);
+  const titolo = `<h2>${ico("grafico")} Quanto spendete</h2>`;
+  if (!settimane.size) {
+    return `<section class="pannello">${titolo}
+      <p class="nota">Ancora nessun prezzo. Il grafico si riempie con i prezzi che scrivete nella Spesa (le stime non contano).</p></section>`;
+  }
+  const budget = Number(imp().budget) > 0 ? Number(imp().budget) : 0;
+  const corrente = lunediDi(oggiISO());
+  const elenco = [...Array(8)].map((_, i) => aggiungiGiorni(corrente, (i - 7) * 7));
+  const valori = elenco.map((d) => settimane.get(d) || 0);
+  const massimo = Math.max(budget, ...valori) || 1;
+  const conValore = valori.filter((v) => v > 0);
+  const ultime4 = valori.slice(4).filter((v) => v > 0);
+  const media = ultime4.length ? ultime4.reduce((a, b) => a + b, 0) / ultime4.length : 0;
+  const iMax = valori.indexOf(Math.max(...valori));
+  const barre = elenco.map((d, i) => {
+    const v = valori[i];
+    const oltre = budget && v > budget;
+    const etichetta = `Settimana ${intervalloSettimana(d)}: ${v ? formattaEuro(v) : "nessun prezzo"}${oltre ? ", oltre il budget" : ""}`;
+    return `<button type="button" class="barra-sett${oltre ? " oltre" : ""}${d === corrente ? " corrente" : ""}" data-azione="info-barra"
+      data-testo="${esc(etichetta)}" aria-label="${esc(etichetta)}" title="${esc(etichetta)}">
+      <span class="valore">${v && (i === iMax || d === corrente) ? Math.round(v) : ""}</span>
+      <span class="pista"><span class="colonna" style="height:${Math.max(v ? 3 : 0, Math.round((v / massimo) * 100))}%"></span></span>
+      <span class="giorno-barra">${Number(d.slice(8, 10))}/${Number(d.slice(5, 7))}</span>
+    </button>`;
+  }).join("");
+  const ultimiMesi = [...mesi.keys()].sort().reverse().slice(0, 6);
+  return `<section class="pannello">${titolo}
+    <p class="nota">Totale dei prezzi scritti nella Spesa, per settimana del menù (tocca una barra per il dettaglio).</p>
+    <div class="grafico-spesa" role="group" aria-label="Spesa delle ultime 8 settimane">
+      ${budget ? `<div class="linea-budget" style="top:${16 + Math.round((1 - budget / massimo) * 120)}px"><span>budget ${budget} €</span></div>` : ""}
+      ${barre}
+    </div>
+    <p class="riassunto-spesa">${media ? `Media ultime 4 settimane: <strong>${formattaEuro(media)}</strong>` : ""}${conValore.length && budget ? ` · ${valori.filter((v) => v > budget).length} su ${conValore.length} oltre il budget` : ""}</p>
+    <table class="tabella-mesi"><caption>Per mese</caption><tbody>${ultimiMesi.map((m) => `<tr><th scope="row">${MESI_BREVI[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}</th><td>${formattaEuro(mesi.get(m))}</td></tr>`).join("")}</tbody></table>
+  </section>`;
+}
+
+// ---------------------------------------------------------------- copia di sicurezza
+function scaricaFile(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url; a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+// iPhone: il download dall'app installata non è affidabile, si usa Condividi
+// (Salva su File). Android: download normale nella cartella Download.
+async function scaricaBackup() {
+  const copia = creaBackup(S, document.documentElement.dataset.versione || "");
+  const file = new File([JSON.stringify(copia)], nomeFileBackup(oggiISO()), { type: "application/json" });
+  if (suIOS() && navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: file.name }); return; } catch (err) {
+      if (err?.name === "AbortError") return;
+    }
+  }
+  scaricaFile(file);
+  avviso("Copia scaricata");
+}
+let backupInAttesa = null;
+const NOMI_COLL = {
+  pasti: "pasti del menù", spunte: "spunte", extra: "voci aggiunte", giorniCasa: "giorni a casa",
+  impostazioni: "impostazioni", ricetteUtente: "ricette vostre", alimentiUtente: "prodotti vostri", prezzi: "prezzi",
+};
+async function apriBackup(file) {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) return avviso("Il file è troppo grande", 3500);
+  const ris = leggiBackup(await file.text());
+  if (ris.errore) return avviso(ris.errore, 4000);
+  backupInAttesa = ris.ops;
+  apriModale(`<h2>${ico("carica")} Ricarica la copia</h2>
+    ${ris.creato ? `<p class="sottotitolo">Copia del ${esc(formattaGiornoMese(ris.creato))} ${esc(ris.creato.slice(0, 4))}</p>` : ""}
+    <ul class="elenco-backup">${Object.entries(ris.conteggi).filter(([, n]) => n).map(([c, n]) => `<li><span>${esc(NOMI_COLL[c] || c)}</span><strong>${n}</strong></li>`).join("")}</ul>
+    <p class="nota">I dati del file si aggiungono a quelli dell'app; quelli con lo stesso giorno o nome vengono sostituiti. ${archivio.modalita === "cloud" ? "Valgono per tutti i telefoni collegati." : ""}</p>
+    <div class="azioni-modale">
+      <button class="btn" data-azione="chiudi">Annulla</button>
+      <button class="btn primario" data-azione="backup-ricarica">Ricarica</button>
+    </div>`);
 }
 
 // Testo della lista (stesso ordine della pagina) da condividere o copiare
@@ -1546,6 +1656,14 @@ document.addEventListener("click", async (e) => {
       break;
     }
     case "tema": impostaTema(el.dataset.valore); disegna(); break;
+    case "info-barra": avviso(el.dataset.testo, 3500); break;
+    case "backup-scarica": await scaricaBackup(); break;
+    case "backup-ricarica":
+      if (backupInAttesa) archivio.scriviMolti(backupInAttesa);
+      avviso(`Copia ricaricata (${backupInAttesa?.length || 0} dati)`, 3500);
+      backupInAttesa = null;
+      chiudiModale();
+      break;
     case "filtro-pasto": S.filtroPasto = el.dataset.valore; disegna(); break;
     case "filtro-stagione": S.filtroStagione = el.dataset.valore; disegna(); break;
     case "togli-extra": archivio.elimina("extra", id); break;
@@ -1598,6 +1716,9 @@ document.addEventListener("change", (e) => {
     impostaNegozio(el.checked);
     disegna();
     if (!el.checked && senzaPrezzo(vociSpesa()).length) apriConfermaPrezzi();
+  } else if (el.dataset.azione === "backup-file") {
+    apriBackup(el.files?.[0]);
+    el.value = "";
   } else if (el.dataset.azione === "dispensa") {
     S.mostraDispensa = el.checked;
     disegna();
