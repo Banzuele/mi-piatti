@@ -153,3 +153,87 @@ test("Menù e Lista partono sempre da lunedì", async () => {
   assert.equal(lunediDopo("2026-11-21"), "2026-11-23");
   assert.equal(lunediDopo("2026-11-23"), "2026-11-23");
 });
+
+test("regole settimanali da lunedì a domenica, anche quelle scelte in Altro", async () => {
+  const { regoleSettimana, TIPI_PIATTO, contaTipiSettimana } = await import("../js/pianificatore.js");
+  const { IMPOSTAZIONI_PREDEFINITE: I, lunediDi } = await import("../js/calendario.js");
+  assert.deepEqual(regoleSettimana(I).Pesce, { min: 2, max: 14 });
+  assert.deepEqual(regoleSettimana({ ...I, maxFormaggi: 1, minUova: 5, maxUova: 3 }).Formaggi, { min: 0, max: 1 });
+  assert.deepEqual(regoleSettimana({ ...I, minUova: 5, maxUova: 3 }).Uova, { min: 5, max: 5 }); // max mai sotto il min
+  const imp = { ...I, maxFormaggi: 2, maxCarneBianca: 2 };
+  for (const seme of [3, 11, 42]) {
+    const inizio = "2026-11-30"; // lunedì
+    const { piano, problemi } = generaPiano({ ricette, alimenti, inizio, settimane: 4, imp, rng: rngFisso(seme) });
+    assert.deepEqual(problemi, []);
+    for (let w = 0; w < 4; w++) {
+      const c = contaTipiSettimana(piano, ricettePerId, lunediDi(aggiungiGiorni(inizio, w * 7)));
+      const reg = regoleSettimana(imp);
+      for (const t of TIPI_PIATTO) {
+        assert.ok(c[t.proteina] >= reg[t.proteina].min && c[t.proteina] <= reg[t.proteina].max,
+          `sett. ${w + 1} ${t.proteina} ${c[t.proteina]}`);
+      }
+    }
+  }
+});
+
+test("cena doppia: nei feriali il pranzo sono gli avanzi della cena prima", async () => {
+  const { IMPOSTAZIONI_PREDEFINITE: I } = await import("../js/calendario.js");
+  const { pranzoConAvanzi } = await import("../js/pianificatore.js");
+  const imp = { ...I, cenaDoppia: 1 };
+  assert.equal(pranzoConAvanzi("2026-12-01", {}, imp), true); // martedì
+  assert.equal(pranzoConAvanzi("2026-12-01", {}, I), false); // predefinito: no
+  assert.equal(pranzoConAvanzi("2026-12-05", {}, imp), false); // sabato
+  assert.equal(pranzoConAvanzi("2026-12-08", {}, imp), false); // Immacolata
+  assert.equal(pranzoConAvanzi("2026-12-02", { "2026-12-02": { tipo: "ferie" } }, imp), false);
+  const inizio = "2026-11-30";
+  const { piano, avanzi } = generaPiano({ ricette, alimenti, inizio, settimane: 1, imp, rng: rngFisso(5),
+    pianoEsistente: { "2026-11-29_cena": "CEN02" } });
+  assert.deepEqual(avanzi.sort(), ["2026-11-30_pranzo", "2026-12-01_pranzo", "2026-12-02_pranzo", "2026-12-03_pranzo", "2026-12-04_pranzo"]);
+  assert.equal(piano["2026-11-30_pranzo"], "CEN02");
+  assert.equal(piano["2026-12-02_pranzo"], piano["2026-12-01_cena"]);
+  // la spesa compra la porzione in più con la cena del giorno prima
+  const lista = calcolaSpesa({ piano: { "2026-12-01_cena": "CEN02", "2026-12-02_pranzo": "CEN02" },
+    sabato: "2026-11-30", ricettePerId, alimentiPerId, avanzi: new Set(["2026-12-02_pranzo"]) });
+  assert.equal(lista.find((x) => x.id === "AL120").quantita, 700); // merluzzo surgelato 200 × 3,5
+});
+
+test("budget: con un budget basso il menù costa meno", async () => {
+  const { IMPOSTAZIONI_PREDEFINITE: I } = await import("../js/calendario.js");
+  const { costoPorzione, costoSettimana } = await import("../js/pianificatore.js");
+  const costi = new Map(ricette.map((r) => [r.id, costoPorzione(r, alimentiPerId, (a) => a.stima)]));
+  assert.ok(costi.get("PRA61") < 1 && costi.get("CEN32") > 5);
+  const media = (imp) => {
+    let tot = 0;
+    for (const seme of [1, 2, 3, 4, 5]) {
+      const { piano } = generaPiano({ ricette, alimenti, inizio: "2026-11-30", settimane: 2, imp, costi, rng: rngFisso(seme) });
+      tot += costoSettimana(piano, "2026-11-30", { costi, imp }) + costoSettimana(piano, "2026-12-07", { costi, imp });
+    }
+    return tot / 10;
+  };
+  assert.ok(media({ ...I, budget: 50 }) < media(I) - 5);
+});
+
+test("spesa: freschi di sabato e domenica nel gruppo da comprare il giorno della spesa", async () => {
+  const { testoConfezioni, spesaComeTesto } = await import("../js/spesa.js");
+  const piano = {
+    "2026-11-24_cena": "CEN02", // martedì: merluzzo surgelato
+    "2026-11-28_cena": "CEN02", // sabato: merluzzo fresco, da comprare sabato
+    "2026-11-29_pranzo": "PRA01", // domenica: pasta (dispensa) e verdure
+  };
+  const lista = calcolaSpesa({ piano, sabato: "2026-11-23", ricettePerId, alimentiPerId, compraDopo: "2026-11-28" });
+  const merluzzo = lista.find((x) => x.id === "AL37");
+  assert.equal(merluzzo.dopo, true);
+  assert.equal(lista.find((x) => x.id === "AL120").dopo, false);
+  assert.equal(lista.find((x) => x.id === "AL01").dopo, false); // la dispensa resta nella lista principale
+  assert.ok(lista.findIndex((x) => x.dopo) > lista.findIndex((x) => !x.dopo && x.reparto === "congelati"));
+  assert.ok(lista.slice(lista.findIndex((x) => x.dopo)).every((x) => x.dopo));
+  assert.match(spesaComeTesto("Spesa", lista, "Da comprare sabato"), /DA COMPRARE SABATO\n\n?.*\n?.*Merluzzo/s);
+  assert.equal(testoConfezioni(2, "confezione"), "2 confezioni");
+  assert.equal(testoConfezioni(1, "confezione"), "1 confezione");
+  assert.equal(testoConfezioni(3, "pacco"), "3 pacchi");
+});
+
+test("carboidrato principale del piatto", async () => {
+  const { carboidrato } = await import("../js/pianificatore.js");
+  assert.equal(carboidrato(ricettePerId.get("PRA01"), alimentiPerId), "pasta");
+});

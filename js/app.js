@@ -8,7 +8,8 @@ import {
 } from "./calendario.js";
 import {
   PASTI, chiavePasto, generaPiano, scegliRicetta, entroTempi, surgelabile,
-  deperibilitaCompatibile, REGOLE_SETTIMANA, motivoNoSpostamento as motivoNoSpost,
+  deperibilitaCompatibile, motivoNoSpostamento as motivoNoSpost,
+  TIPI_PIATTO, regoleSettimana, contaTipiSettimana, costoPorzione, costoSettimana,
 } from "./pianificatore.js";
 import { REPARTI, calcolaSpesa, spesaComeTesto, formattaQuantita, spuntatiInFondo } from "./spesa.js";
 import {
@@ -48,7 +49,35 @@ function moltPasto(k) {
 }
 const porzioniForzate = () => Object.fromEntries(Object.entries(S.pasti)
   .filter(([k, v]) => v.molt != null).map(([k, v]) => [k, v.molt]));
-const piano = () => Object.fromEntries(Object.entries(S.pasti).map(([k, v]) => [k, v.ricetta]));
+// Menù salvato: { "AAAA-MM-GG_pasto": id ricetta }. Un pranzo "avanzi" usa la
+// ricetta della cena del giorno prima (e la segue se la cena cambia).
+const cenaDiIeri = (k) => chiavePasto(aggiungiGiorni(k.split("_")[0], -1), "cena");
+function piano() {
+  const P = {};
+  for (const [k, v] of Object.entries(S.pasti)) {
+    if (v.avanzi) {
+      const c = S.pasti[cenaDiIeri(k)];
+      if (c?.ricetta && !c.avanzi) P[k] = c.ricetta;
+    } else if (v.ricetta) P[k] = v.ricetta;
+  }
+  return P;
+}
+const chiaviAvanzi = () => new Set(Object.entries(S.pasti).filter(([, v]) => v.avanzi).map(([k]) => k));
+// Pranzo del giorno dopo fatto con gli avanzi di questa cena?
+const cenaConAvanzi = (k) => !!S.pasti[chiavePasto(aggiungiGiorni(k.split("_")[0], 1), "pranzo")]?.avanzi;
+
+// Prezzo di un alimento (€ al kg / l / pz): l'ultimo prezzo vero, altrimenti la stima
+function prezzoAlimento(a) {
+  const st = statistiche(storico(S.prezzi, chiaveProdotto({ alimento: a.id })));
+  if (st && st.ultimo.unita === (UNITA_PREZZO[a.unita] || "pz")) return st.ultimo.valore;
+  return Number(a.stima) > 0 ? Number(a.stima) : null;
+}
+// Costo a porzione di ogni ricetta, per il budget del menù
+function costiRicette() {
+  const cache = new Map();
+  const prezzo = (a) => { if (!cache.has(a.id)) cache.set(a.id, prezzoAlimento(a)); return cache.get(a.id); };
+  return new Map(S.tutteRicette.map((r) => [r.id, costoPorzione(r, S.alimentiPerId, prezzo)]));
+}
 const idCasuale = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 const ICONA_PROTEINA = {
@@ -316,7 +345,7 @@ function vistaInstalla(pannello) {
     <details><summary>${ios ? "Android" : "iPhone e iPad"}</summary>${ios ? istruzioniAndroid() : istruzioniIOS()}</details>`;
 }
 
-function navSettimana(fissa = false) {
+function navSettimana(fissa = false, sotto = "") {
   const corrente = lunediDi(oggiISO());
   const quale = S.settimana === corrente ? "Questa settimana"
     : S.settimana === aggiungiGiorni(corrente, 7) ? "Prossima settimana"
@@ -330,16 +359,40 @@ function navSettimana(fissa = false) {
         : statoSync()}
     </div>
     <button class="btn-ico" data-azione="sett" data-delta="7" aria-label="Settimana successiva">›</button>
-  </div>${fissa ? "</div>" : ""}`;
+  </div>${sotto}${fissa ? "</div>" : ""}`;
 }
 
 // ---------------------------------------------------------------- menù
+// Riepilogo della settimana, in alto nel Menù: piatti per tipo (rosso se fuori
+// dai limiti scelti in Altro) e costo previsto della lista rispetto al budget.
+function riepilogoSettimana(giorni) {
+  const I = imp();
+  const regole = regoleSettimana(I);
+  const c = contaTipiSettimana(piano(), S.ricettePerId, giorni[0], chiaviAvanzi());
+  const chip = TIPI_PIATTO.filter((t) => c[t.proteina] > 0 || regole[t.proteina].min > 0).map((t) => {
+    const { min, max } = regole[t.proteina];
+    const n = c[t.proteina];
+    const ko = n < min || n > max;
+    const titolo = `${t.proteina}: ${n} (${min ? `minimo ${min}` : ""}${min && max < 14 ? ", " : ""}${max < 14 ? `massimo ${max}` : ""})`;
+    return `<span class="chip ${ko ? "ko" : ""}" title="${esc(titolo)}">${ICONA_PROTEINA[t.proteina]} ${n}${ko ? (n < min ? ` <small>min ${min}</small>` : ` <small>max ${max}</small>`) : ""}</span>`;
+  });
+  // costo dei piatti (dosi usate), lo stesso che il menù confronta con il budget
+  const tot = costoSettimana(piano(), giorni[0], {
+    costi: costiRicette(), giorniCasa: S.giorniCasa, imp: I, porzioni: porzioniForzate(),
+  });
+  const budget = Number(I.budget) > 0 ? Number(I.budget) : 0;
+  if (tot) {
+    chip.push(`<span class="chip ${budget && tot > budget ? "ko" : ""}" title="Costo dei piatti della settimana (dosi usate)">💶 ≈ ${Math.round(tot)} €${budget ? ` / ${budget} €` : ""}</span>`);
+  }
+  return `<div class="chip-riga scorre riepilogo" aria-label="Riepilogo della settimana">${chip.join("")}</div>`;
+}
+
 function vistaMenu() {
   const giorni = giorniSettimana(S.settimana);
   const P = piano();
   const oggi = oggiISO();
-  const haPasti = giorni.some((d) => PASTI.some((p) => P[chiavePasto(d, p)]));
-  let h = navSettimana(true) + invitoInstalla();
+  const haPasti = giorni.some((d) => PASTI.some((p) => P[chiavePasto(d, p)] || S.pasti[chiavePasto(d, p)]?.avanzi));
+  let h = navSettimana(true, haPasti ? riepilogoSettimana(giorni) : "") + invitoInstalla();
   if (S.scambio) {
     const [d, p] = S.scambio.split("_");
     h += `<div class="banner">Tocca un altro ${PASTO[p].nome.toLowerCase()} da scambiare con quello di ${formattaGiornoMese(d)}.
@@ -361,15 +414,18 @@ function vistaMenu() {
     for (const p of PASTI) {
       const k = chiavePasto(d, p);
       const r = S.ricettePerId.get(P[k]);
+      const avanzi = !!S.pasti[k]?.avanzi;
       const sel = S.scambio === k ? "selezionato" : "";
       const m = moltPasto(k);
-      h += `<div class="pasto-riga ${sel}" data-chiave="${k}">
-      ${r ? `<span class="maniglia" data-chiave="${k}" role="button" aria-label="Tieni premuto per spostare" title="Tieni premuto per spostare">☰</span>` : `<span class="maniglia vuota"></span>`}
+      const info2 = avanzi ? (r ? "🍱 Avanzi della cena di ieri" : "")
+        : r ? `${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min${p === "cena" && cenaConAvanzi(k) ? " · 🍱 anche per il pranzo di domani" : ""}` : "";
+      h += `<div class="pasto-riga ${sel} ${avanzi ? "avanzi" : ""}" data-chiave="${k}">
+      ${r && !avanzi ? `<span class="maniglia" data-chiave="${k}" role="button" aria-label="Tieni premuto per spostare" title="Tieni premuto per spostare">☰</span>` : `<span class="maniglia vuota"></span>`}
       <button class="pasto" data-azione="pasto" data-chiave="${k}">
-        <span class="pasto-ico">${PASTO[p].ico}</span>
+        <span class="pasto-ico">${avanzi ? "🍱" : PASTO[p].ico}</span>
         <span class="pasto-testo">
-          <span class="pasto-nome">${r ? esc(r.nome) : "<em>— da scegliere —</em>"}</span>
-          ${r ? `<span class="pasto-info">${ICONA_PROTEINA[r.proteina] || ""} ${esc(r.proteina)} · ${r.tempoTotale} min</span>` : ""}
+          <span class="pasto-nome">${r ? esc(r.nome) : avanzi ? "<em>Avanzi: manca la cena di ieri</em>" : "<em>— da scegliere —</em>"}</span>
+          ${info2 ? `<span class="pasto-info">${info2}</span>` : ""}
         </span>
       </button>
       <button class="molt ${m.forzato ? "forzato" : ""}" data-azione="molt" data-chiave="${k}"
@@ -378,19 +434,7 @@ function vistaMenu() {
     }
     h += `</section>`;
   }
-  // riepilogo settimana
-  const c = { Pesce: 0, Legumi: 0, "Carne rossa": 0 };
-  for (const d of giorni) for (const p of PASTI) {
-    const r = S.ricettePerId.get(P[chiavePasto(d, p)]);
-    if (r && r.proteina in c) c[r.proteina]++;
-  }
-  const ok = (v, min, max) => (min != null && v < min) || (max != null && v > max) ? "ko" : "ok";
-  h += `<div class="riepilogo">
-    <span class="${ok(c.Pesce, REGOLE_SETTIMANA.pesceMin)}">🐟 Pesce ${c.Pesce}</span>
-    <span class="${ok(c.Legumi, REGOLE_SETTIMANA.legumiMin)}">🫘 Legumi ${c.Legumi}</span>
-    <span class="${ok(c["Carne rossa"], null, REGOLE_SETTIMANA.carneRossaMax)}">🥩 Carne rossa ${c["Carne rossa"]}</span>
-  </div>
-  <button class="btn secondario largo" data-azione="apri-genera">Rigenera menù…</button>`;
+  h += `<button class="btn secondario largo" data-azione="apri-genera">Rigenera menù…</button>`;
   return h;
 }
 
@@ -408,6 +452,7 @@ function apriGenera() {
         `<option value="${n}" ${n === 4 ? "selected" : ""}>${n} ${n === 1 ? "settimana" : "settimane"}</option>`).join("")}</select>
     </label>
     <p class="nota">I pasti già presenti in queste settimane verranno sostituiti. Le spunte della spesa restano.</p>
+    ${Number(imp().cenaDoppia) === 1 ? `<p class="nota">🍱 Cena doppia attiva: nei giorni feriali il pranzo è fatto con gli avanzi della cena prima (si cambia in Altro).</p>` : ""}
     <div class="azioni-modale">
       <button class="btn" data-azione="chiudi">Annulla</button>
       <button class="btn primario" data-azione="genera">Genera</button>
@@ -417,13 +462,19 @@ function apriGenera() {
 async function genera() {
   const inizio = document.getElementById("gen-inizio").value;
   const settimane = Number(document.getElementById("gen-sett").value);
-  const ris = generaPiano({ ricette: S.ricette, alimenti: S.alimenti, inizio, settimane, imp: imp() });
+  const ris = generaPiano({
+    ricette: S.ricette, alimenti: S.alimenti, inizio, settimane, imp: imp(),
+    giorniCasa: S.giorniCasa, costi: costiRicette(), pianoEsistente: piano(),
+  });
+  const avanzi = new Set(ris.avanzi);
   const ops = [];
   for (let g = 0; g < settimane * 7; g++) {
     const d = aggiungiGiorni(inizio, g);
     for (const p of PASTI) {
       const k = chiavePasto(d, p);
-      ops.push({ coll: "pasti", id: k, dati: ris.piano[k] ? { ricetta: ris.piano[k] } : null });
+      const dati = avanzi.has(k) ? { avanzi: true, ricetta: null }
+        : ris.piano[k] ? { ricetta: ris.piano[k], avanzi: false } : null;
+      ops.push({ coll: "pasti", id: k, dati });
     }
   }
   await archivio.scriviMolti(ops);
@@ -442,15 +493,20 @@ function apriPasto(k) {
     return;
   }
   const [d, p] = k.split("_");
-  const r = S.ricettePerId.get(S.pasti[k]?.ricetta);
-  apriModale(`<h2>${PASTO[p].ico} ${PASTO[p].nome} · ${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</h2>
-    ${r ? `<p class="sottotitolo">${esc(r.nome)}</p>` : ""}
+  const avanzi = !!S.pasti[k]?.avanzi;
+  const r = S.ricettePerId.get(piano()[k]);
+  // avanzi della cena di ieri: possibili per un pranzo se ieri sera c'è una ricetta
+  const cenaIeri = S.pasti[cenaDiIeri(k)];
+  const puoAvanzi = p === "pranzo" && !avanzi && cenaIeri?.ricetta && !cenaIeri.avanzi;
+  apriModale(`<h2>${avanzi ? "🍱" : PASTO[p].ico} ${PASTO[p].nome} · ${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</h2>
+    ${r ? `<p class="sottotitolo">${avanzi ? "Avanzi della cena di ieri: " : ""}${esc(r.nome)}</p>` : ""}
     <div class="lista-azioni">
-      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${k}">📖 Vedi ricetta e dosi</button>` : ""}
-      <button class="btn largo" data-azione="cambia" data-chiave="${k}">🎲 Cambia (proposta automatica)</button>
+      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${avanzi ? cenaDiIeri(k) : k}">📖 Vedi ricetta e dosi</button>` : ""}
+      ${puoAvanzi ? `<button class="btn largo" data-azione="usa-avanzi" data-chiave="${k}">🍱 Usa gli avanzi della cena di ieri</button>` : ""}
+      <button class="btn largo" data-azione="cambia" data-chiave="${k}">🎲 ${avanzi ? "Cucina un piatto (proposta automatica)" : "Cambia (proposta automatica)"}</button>
       <button class="btn largo" data-azione="scegli" data-chiave="${k}">📋 Scegli dall'elenco</button>
-      ${r ? `<button class="btn largo" data-azione="scambia" data-chiave="${k}">🔁 Scambia con un altro giorno</button>` : ""}
-      ${r ? `<button class="btn largo pericolo" data-azione="svuota" data-chiave="${k}">🗑️ Togli questo pasto</button>` : ""}
+      ${r && !avanzi ? `<button class="btn largo" data-azione="scambia" data-chiave="${k}">🔁 Scambia con un altro giorno</button>` : ""}
+      ${r || avanzi ? `<button class="btn largo pericolo" data-azione="svuota" data-chiave="${k}">🗑️ Togli questo pasto</button>` : ""}
     </div>
     <div class="azioni-modale"><button class="btn" data-azione="chiudi">Chiudi</button></div>`);
 }
@@ -459,6 +515,7 @@ function apriPasto(k) {
 // Si possono scambiare solo due pasti dello stesso tipo (pranzo/cena) le cui
 // ricette hanno la stessa deperibilità.
 function motivoNoSpostamento(a, b) {
+  if (S.pasti[a]?.avanzi || S.pasti[b]?.avanzi) return "Gli avanzi seguono la cena del giorno prima: non si spostano";
   return motivoNoSpost(a, b, S.ricettePerId.get(S.pasti[a]?.ricetta), S.ricettePerId.get(S.pasti[b]?.ricetta));
 }
 
@@ -738,12 +795,15 @@ function salvaNuovoAlimento() {
 function cambia(k) {
   const [data, pasto] = k.split("_");
   const P = piano();
+  const avanzi = chiaviAvanzi();
+  avanzi.delete(k);
   const { ricetta } = scegliRicetta({
     data, pasto, piano: P, ricette: S.ricette, ricettePerId: S.ricettePerId,
     alimentiPerId: S.alimentiPerId, imp: imp(), escludi: P[k] ? [P[k]] : [],
+    avanzi, giorniCasa: S.giorniCasa, costi: costiRicette(),
   });
   if (!ricetta) { avviso("Nessuna alternativa disponibile"); return; }
-  archivio.scrivi("pasti", k, { ricetta: ricetta.id });
+  archivio.scrivi("pasti", k, { ricetta: ricetta.id, avanzi: false });
   chiudiModale();
   avviso(`Nuova proposta: ${ricetta.nome}`);
 }
@@ -783,11 +843,16 @@ function scegli(k, filtro = "") {
 function vediRicetta(id, k) {
   const r = S.ricettePerId.get(id);
   if (!r) return;
-  let molt = 1, data = null;
+  let molt = 1, data = null, perAvanzi = 0;
   if (k) {
-    const [d, p] = k.split("_");
+    const [d] = k.split("_");
     data = d;
     molt = moltPasto(k).valore;
+    // cena doppia: si cucina anche la porzione del pranzo di domani
+    if (cenaConAvanzi(k)) {
+      perAvanzi = moltPasto(chiavePasto(aggiungiGiorni(d, 1), "pranzo")).valore;
+      molt += perAvanzi;
+    }
   }
   const righe = r.ingredienti.map((i) => {
     const a = S.alimentiPerId.get(i.id);
@@ -808,6 +873,7 @@ function vediRicetta(id, k) {
     </div>
     ${fuori ? `<p class="nota avvertenza">Supera i limiti di tempo (${imp().maxPrep} min attivi, ${imp().maxTotale} totali): non viene proposta nel menù.</p>` : ""}
     <h3>Ingredienti ${molt === 1 ? "(1 porzione)" : `(×${num(molt)} porzioni)`}</h3>
+    ${perAvanzi ? `<p class="nota">🍱 Comprende ×${num(perAvanzi)} per il pranzo di domani: mettilo da parte prima di servire.</p>` : ""}
     <ul class="ingredienti">${righe}</ul>
     ${r.contorno ? `<p class="nota">Contorno e frutta: ${esc(r.contorno)}</p>` : ""}
     ${r.procedimento?.length ? `<h3>Procedimento</h3>
@@ -820,14 +886,25 @@ function vediRicetta(id, k) {
 }
 
 // ---------------------------------------------------------------- spesa
+// La Lista va da lunedì a domenica, ma la spesa si fa (di solito) il sabato:
+// i freschi dei giorni dal giorno della spesa in poi (sabato e domenica) si
+// comprano quel giorno, non 7-8 giorni prima. Con la spesa il lunedì niente gruppo.
+function giornoCompraDopo() {
+  const g = imp().giornoSpesa ?? 6;
+  const scarto = (g + 6) % 7; // lunedì = 0 ... domenica = 6
+  return scarto ? aggiungiGiorni(S.settimana, scarto) : null;
+}
+const titoloCompraDopo = (d) => `Da comprare ${GIORNI_LUNGHI[giornoSettimana(d)].toLowerCase()} ${formattaGiornoMese(d)}`;
+
 function vociSpesa() {
   const voci = calcolaSpesa({
     piano: piano(), sabato: S.settimana, ricettePerId: S.ricettePerId,
     alimentiPerId: S.alimentiPerId, giorniCasa: S.giorniCasa, imp: imp(), porzioni: porzioniForzate(),
-  }).map((v) => ({
-    ...v, chiave: `${S.settimana}_${v.id}`, prodotto: chiaveProdotto({ alimento: v.id }),
-    fatto: !!S.spunte[`${S.settimana}_${v.id}`]?.fatto,
-  }));
+    avanzi: chiaviAvanzi(), compraDopo: giornoCompraDopo(),
+  }).map((v) => {
+    const chiave = `${S.settimana}_${v.id}${v.dopo ? "_dopo" : ""}`;
+    return { ...v, chiave, prodotto: chiaveProdotto({ alimento: v.id }), fatto: !!S.spunte[chiave]?.fatto };
+  });
   const extra = Object.entries(S.extra)
     .filter(([, e]) => typeof e.settimana === "string" && lunediDopo(e.settimana) === S.settimana)
     .map(([id, e]) => {
@@ -843,8 +920,8 @@ function vociSpesa() {
       };
     });
   const pos = new Map(REPARTI.map((r, i) => [r.id, i]));
-  return [...voci, ...extra].sort((a, b) =>
-    (pos.get(a.reparto) ?? 99) - (pos.get(b.reparto) ?? 99) || a.nome.localeCompare(b.nome, "it"));
+  return [...voci, ...extra].sort((a, b) => (a.dopo ? 1 : 0) - (b.dopo ? 1 : 0)
+    || (pos.get(a.reparto) ?? 99) - (pos.get(b.reparto) ?? 99) || a.nome.localeCompare(b.nome, "it"));
 }
 
 // ---------------------------------------------------------------- prezzi
@@ -977,6 +1054,10 @@ function totaleSpesa(voci) {
     if (c.fonte === "pagato") pagato += c.valore;
     if (c.fonte === "stima") stime++;
   }
+  return { tot, pagato, stime };
+}
+function testoTotaleSpesa(voci) {
+  const { tot, pagato, stime } = totaleSpesa(voci);
   if (!tot) return "";
   return ` · <b class="totale-spesa" title="${stime} prezzi stimati">≈ ${formattaEuro(tot)}</b>${pagato ? ` <small>(pagati ${formattaEuro(pagato)})</small>` : ""}`;
 }
@@ -1074,26 +1155,51 @@ function salvaAggiungi(dati) {
   avviso(`Aggiunto: ${a.nome}`);
 }
 
+// Modalità negozio (per telefono): spuntando non si apre il prezzo; i prezzi
+// si confermano tutti insieme alla fine con "Conferma i prezzi".
+const CHIAVE_NEGOZIO = "mipiatti:negozio";
+function modalitaNegozio() {
+  try { return localStorage.getItem(CHIAVE_NEGOZIO) === "1"; } catch { return false; }
+}
+function impostaNegozio(on) {
+  try { if (on) localStorage.setItem(CHIAVE_NEGOZIO, "1"); else localStorage.removeItem(CHIAVE_NEGOZIO); } catch { /* niente */ }
+}
+const senzaPrezzo = (voci) => voci.filter((v) => v.fatto && !S.prezzi[v.chiave]);
+
 function vistaSpesa() {
   let h = navSettimana(true);
   const tutte = vociSpesa();
   const voci = spuntatiInFondo(tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra));
   const presi = voci.filter((v) => v.fatto).length;
+  const negozio = modalitaNegozio();
+  const daPrezzare = senzaPrezzo(tutte).length;
   h += `<div class="azioni-spesa">
     ${"share" in navigator ? `<button class="btn piccolo" data-azione="condividi-spesa">📤 Condividi</button>` : ""}
     <button class="btn piccolo" data-azione="copia-spesa">📋 Copia</button>
     <button class="btn piccolo" data-azione="azzera-spunte">↺ Togli le spunte</button>
   </div>
   <div class="barra-spesa">
-    <span>${presi}/${voci.length} presi${totaleSpesa(voci)}</span>
+    <span>${presi}/${voci.length} presi${testoTotaleSpesa(voci)}</span>
     <label class="interruttore"><input type="checkbox" data-azione="dispensa" ${S.mostraDispensa ? "checked" : ""}> Mostra dispensa</label>
-  </div>`;
+  </div>
+  <div class="barra-spesa">
+    <label class="interruttore"><input type="checkbox" data-azione="negozio" ${negozio ? "checked" : ""}> 🛒 Modalità negozio</label>
+    ${daPrezzare ? `<button class="btn piccolo primario" data-azione="conferma-prezzi">💶 Conferma i prezzi (${daPrezzare})</button>` : ""}
+  </div>
+  ${negozio ? `<p class="nota">Spunta e vai avanti: i prezzi li confermi tutti insieme alla fine.</p>` : ""}`;
   if (!tutte.length) {
     h += `<div class="vuoto"><p>Nessun pasto in questa settimana, quindi niente da comprare.</p>
       <button class="btn" data-azione="vai-menu">Vai al menù</button></div>`;
   }
-  let reparto = null;
+  let reparto = null, dopo = false;
   for (const v of voci) {
+    if (v.dopo && !dopo) {
+      if (reparto !== null) h += `</ul>`;
+      dopo = true;
+      reparto = null;
+      h += `<h2 class="compra-dopo">🗓️ ${esc(titoloCompraDopo(giornoCompraDopo()))}</h2>
+        <p class="nota">Freschi per i pasti da ${esc(GIORNI_LUNGHI[giornoSettimana(giornoCompraDopo())].toLowerCase())} a domenica: comprali il giorno della spesa, così sono freschi.</p>`;
+    }
     if (v.reparto !== reparto) {
       if (reparto !== null) h += `</ul>`;
       reparto = v.reparto;
@@ -1115,6 +1221,51 @@ function vistaSpesa() {
   h += `<button class="fab" data-azione="apri-aggiungi" aria-label="Aggiungi un prodotto alla spesa">+</button>
   <p class="nota">Il pesce dei pasti da martedì a venerdì è già nella versione surgelata.</p>`;
   return h;
+}
+
+// Fine spesa in modalità negozio: tutti i prodotti presi senza prezzo, con il
+// prezzo proposto (ultimo o stima) già scritto. Campo vuoto = non registrare.
+function apriConfermaPrezzi() {
+  const voci = senzaPrezzo(vociSpesa());
+  if (!voci.length) { avviso("Tutti i prodotti presi hanno già il prezzo"); return; }
+  const righe = voci.map((v) => {
+    const quantita = quantitaComprata(v);
+    const st = statistiche(storico(S.prezzi, v.prodotto));
+    const prop = costoVoce({ pagato: null, st, stima: stimaDi(v), quantita, unita: v.unita });
+    const val = prop ? (Math.round(prop.valore * 100) / 100).toFixed(2).replace(".", ",") : "";
+    return `<li><span class="voce"><span class="voce-nome">${esc(v.nome)}</span>
+        <span class="voce-dett">${esc(formattaQuantita(quantita, v.unita))}${prop ? ` · ${prop.fonte === "stima" ? "stima" : "ultimo prezzo"}` : ""}</span></span>
+      <input name="${esc(v.chiave)}" class="prezzo-riga" inputmode="decimal" autocomplete="off" placeholder="€" value="${esc(val)}" aria-label="Prezzo di ${esc(v.nome)}"></li>`;
+  }).join("");
+  apriModale(`<h2>💶 Conferma i prezzi</h2>
+  <form class="editor" data-azione="salva-prezzi">
+    <p class="nota">Prezzi proposti dall'ultimo acquisto o dalla stima: correggi quelli diversi dallo scontrino. Lascia vuoto per non registrare un prezzo.</p>
+    <ul class="conferma-prezzi">${righe}</ul>
+    <div class="azioni-modale">
+      <button type="button" class="btn" data-azione="chiudi">Annulla</button>
+      <button class="btn primario">Salva tutti</button>
+    </div>
+  </form>`);
+}
+
+function salvaPrezziInBlocco(dati) {
+  const voci = new Map(vociSpesa().map((v) => [v.chiave, v]));
+  const ops = [];
+  let saltati = 0;
+  for (const [chiave, testo] of Object.entries(dati)) {
+    const v = voci.get(chiave);
+    if (!v || !String(testo).trim()) continue;
+    const prezzo = leggiNumero(testo);
+    const p = prezzo && pulisciPrezzo({
+      prodotto: v.prodotto, nome: v.nome, prezzo, quantita: quantitaComprata(v), unita: v.unita,
+      data: oggiISO(), quando: Date.now(),
+    });
+    if (p) ops.push({ coll: "prezzi", id: chiave, dati: p }); else saltati++;
+  }
+  if (saltati) return avviso(`Controlla ${saltati === 1 ? "un prezzo" : `${saltati} prezzi`}: scrivi per esempio 2,49`, 3500);
+  archivio.scriviMolti(ops);
+  chiudiModale();
+  avviso(ops.length === 1 ? "Salvato 1 prezzo" : `Salvati ${ops.length} prezzi`);
 }
 
 // ---------------------------------------------------------------- ricette
@@ -1208,6 +1359,35 @@ function vistaAltro() {
   </section>
 
   <section class="pannello">
+    <h2>Menù e budget</h2>
+    <form class="form-imp" data-azione="salva-imp">
+      <label>Cena dei giorni feriali
+        <select name="cenaDoppia">
+          <option value="0" ${Number(I.cenaDoppia) === 1 ? "" : "selected"}>Normale ×${num(I.moltFamiglia)} (predefinita)</option>
+          <option value="1" ${Number(I.cenaDoppia) === 1 ? "selected" : ""}>Doppia: ×${num(I.moltFamiglia)} + avanzi per il pranzo dopo (×${num(I.moltPranzoFeriale)})</option>
+        </select>
+      </label>
+      <p class="nota">Con la cena doppia, da lunedì a venerdì (non nei festivi, ferie e mensa chiusa) il pranzo è fatto con gli avanzi della cena prima: una cottura in meno. Vale dal prossimo menù generato; ogni pranzo si può comunque cambiare dal Menù.</p>
+      <label>Budget settimanale della spesa (€, 0 = nessuno)
+        <input type="number" min="0" step="1" inputmode="numeric" name="budget" value="${esc(Number(I.budget) > 0 ? Number(I.budget) : 0)}"></label>
+      <p class="nota">Con un budget il menù preferisce piatti più economici quando la settimana costa troppo. Conta il costo dei piatti (le dosi usate, con gli ultimi prezzi pagati o le stime), che si vede in alto nel Menù. La lista della spesa può costare di più: si comprano confezioni intere e prodotti di dispensa che durano più settimane.</p>
+      <h3>Piatti per tipo in una settimana</h3>
+      <p class="nota">Quante volte ogni tipo di piatto può essere proposto da lunedì a domenica (14 pasti; gli avanzi non contano).</p>
+      <table class="tabella-tipi">
+        <thead><tr><th></th><th>Minimo</th><th>Massimo</th></tr></thead>
+        <tbody>${TIPI_PIATTO.map((t) => {
+          const reg = regoleSettimana(I)[t.proteina];
+          return `<tr><th scope="row">${ICONA_PROTEINA[t.proteina]} ${esc(t.proteina === "Nessuna" ? "Senza proteina" : t.proteina)}</th>
+            <td><input type="number" min="0" max="14" inputmode="numeric" name="min${t.chiave}" value="${reg.min}" aria-label="${esc(t.proteina)} minimo"></td>
+            <td><input type="number" min="0" max="14" inputmode="numeric" name="max${t.chiave}" value="${reg.max}" aria-label="${esc(t.proteina)} massimo"></td></tr>`;
+        }).join("")}</tbody>
+      </table>
+      <button class="btn primario">Salva</button>
+      <button type="button" class="btn" data-azione="tipi-predefiniti">Valori consigliati</button>
+    </form>
+  </section>
+
+  <section class="pannello">
     <h2>Impostazioni</h2>
     <form class="form-imp" data-azione="salva-imp">
       <label>Giorno della spesa e del nuovo menù
@@ -1229,7 +1409,8 @@ function vistaAltro() {
 // Testo della lista (stesso ordine della pagina) da condividere o copiare
 function testoSpesa() {
   const voci = spuntatiInFondo(vociSpesa().filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra));
-  return spesaComeTesto(`Spesa ${intervalloSettimana(S.settimana)}`, voci);
+  const dopo = giornoCompraDopo();
+  return spesaComeTesto(`Spesa ${intervalloSettimana(S.settimana)}`, voci, dopo ? titoloCompraDopo(dopo) : undefined);
 }
 async function copiaTesto(testo) {
   try { await navigator.clipboard.writeText(testo); avviso("Lista copiata"); }
@@ -1307,8 +1488,13 @@ document.addEventListener("click", async (e) => {
     case "cambia": cambia(chiave); break;
     case "scegli": scegli(chiave); break;
     case "scelto":
-      archivio.scrivi("pasti", chiave, { ricetta: id });
+      archivio.scrivi("pasti", chiave, { ricetta: id, avanzi: false });
       chiudiModale();
+      break;
+    case "usa-avanzi":
+      archivio.scrivi("pasti", chiave, { avanzi: true, ricetta: null });
+      chiudiModale();
+      avviso("Pranzo con gli avanzi: la cena di ieri si cucina anche per questo pranzo");
       break;
     case "scambia": S.scambio = chiave; chiudiModale(); disegna(); break;
     case "annulla-scambio": S.scambio = null; disegna(); break;
@@ -1333,6 +1519,15 @@ document.addEventListener("click", async (e) => {
       archivio.elimina("ricetteUtente", id); chiudiModale(); avviso("Ricetta eliminata"); break;
     case "chiudi": chiudiModale(); break;
     case "vai-menu": vaiAScheda("menu"); break;
+    case "tipi-predefiniti": {
+      const f = el.closest("form");
+      for (const t of TIPI_PIATTO) {
+        f.elements[`min${t.chiave}`].value = t.min;
+        f.elements[`max${t.chiave}`].value = t.max;
+      }
+      avviso("Valori consigliati: tocca Salva per usarli");
+      break;
+    }
     case "tema": impostaTema(el.dataset.valore); disegna(); break;
     case "filtro-pasto": S.filtroPasto = el.dataset.valore; disegna(); break;
     case "filtro-stagione": S.filtroStagione = el.dataset.valore; disegna(); break;
@@ -1342,6 +1537,7 @@ document.addEventListener("click", async (e) => {
       break;
     case "apri-prezzo": e.preventDefault(); apriPrezzo(chiave); break;
     case "apri-aggiungi": apriAggiungi(); break;
+    case "conferma-prezzi": apriConfermaPrezzi(); break;
     case "scegli-prodotto": scegliProdotto(id); break;
     case "togli-prezzo": archivio.elimina("prezzi", chiave); S.prezzoAperto = null; chiudiModale(); avviso("Prezzo tolto"); break;
     case "condividi-spesa": {
@@ -1373,13 +1569,18 @@ document.addEventListener("change", (e) => {
     else if (el.checked) archivio.scrivi("spunte", el.dataset.chiave, { fatto: true, quando: Date.now() });
     else archivio.elimina("spunte", el.dataset.chiave);
     // spuntando si può scrivere subito il prezzo (facoltativo: "Salta")
-    if (el.checked && !S.prezzi[el.dataset.chiave]) apriPrezzo(el.dataset.chiave);
+    // (in modalità negozio no: i prezzi si confermano alla fine)
+    if (el.checked && !S.prezzi[el.dataset.chiave] && !modalitaNegozio()) apriPrezzo(el.dataset.chiave);
   } else if (el.name === "ingr-id") {
     const a = S.alimentiPerId.get(el.value);
     const u = el.parentElement.querySelector(".unita");
     if (u) u.textContent = a ? NOMI_UNITA[a.unita] || a.unita : "";
   } else if (el.id === "prezzo-unita") {
     aggiornaAnteprimaPrezzo();
+  } else if (el.dataset.azione === "negozio") {
+    impostaNegozio(el.checked);
+    disegna();
+    if (!el.checked && senzaPrezzo(vociSpesa()).length) apriConfermaPrezzi();
   } else if (el.dataset.azione === "dispensa") {
     S.mostraDispensa = el.checked;
     disegna();
@@ -1388,7 +1589,7 @@ document.addEventListener("change", (e) => {
 
 // toccando il prezzo si seleziona tutto, così si riscrive subito (Android e iPhone)
 document.addEventListener("focusin", (e) => {
-  if (e.target.id === "prezzo-valore" || e.target.id === "prezzo-q") {
+  if (e.target.id === "prezzo-valore" || e.target.id === "prezzo-q" || e.target.classList?.contains("prezzo-riga")) {
     const el = e.target;
     setTimeout(() => { try { el.select(); } catch { /* campi number su alcuni browser */ } }, 0);
   }
@@ -1409,6 +1610,8 @@ document.addEventListener("submit", (e) => {
   const dati = Object.fromEntries(new FormData(f));
   if (f.dataset.azione === "salva-prezzo") {
     salvaPrezzo(dati);
+  } else if (f.dataset.azione === "salva-prezzi") {
+    salvaPrezziInBlocco(dati);
   } else if (f.dataset.azione === "aggiungi-extra") {
     // i campi disattivati (unità e reparto di un prodotto già noto) non sono in FormData
     salvaAggiungi(dati);
@@ -1423,6 +1626,17 @@ document.addEventListener("submit", (e) => {
   } else if (f.dataset.azione === "salva-imp") {
     const nuovi = {};
     for (const [k, v] of Object.entries(dati)) nuovi[k] = Number(v);
+    for (const t of TIPI_PIATTO) {
+      if (nuovi[`min${t.chiave}`] > nuovi[`max${t.chiave}`]) {
+        return avviso(`${t.proteina}: il minimo non può superare il massimo`, 3500);
+      }
+    }
+    if (TIPI_PIATTO.every((t) => `min${t.chiave}` in nuovi)) {
+      const sommaMin = TIPI_PIATTO.reduce((x, t) => x + nuovi[`min${t.chiave}`], 0);
+      const sommaMax = TIPI_PIATTO.reduce((x, t) => x + nuovi[`max${t.chiave}`], 0);
+      if (sommaMin > 14) return avviso("I minimi insieme superano i 14 pasti della settimana", 3500);
+      if (sommaMax < 14) return avviso("I massimi insieme non arrivano ai 14 pasti della settimana", 3500);
+    }
     archivio.scrivi("impostazioni", "generali", nuovi);
     avviso("Impostazioni salvate");
   }

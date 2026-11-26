@@ -192,9 +192,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .molt.forzato { background: var(--primario); color: var(--primario-testo); }
 
-.riepilogo { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; font-size: 14px; }
-.riepilogo span { padding: 4px 10px; border-radius: 999px; background: var(--carta); border: 1px solid var(--bordo); }
-.riepilogo .ko { border-color: var(--alta); color: var(--alta); }
+/* riepilogo della settimana nella barra fissa del Menù */
+.barra-fissa .riepilogo { margin: 8px 0 0; }
+.riepilogo .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; }
+.riepilogo .chip.ko { border-color: var(--alta); color: var(--alta); font-weight: 600; }
+.riepilogo small { font-size: 11px; font-weight: 400; }
 
 .banner {
   display: flex; align-items: center; gap: 8px; justify-content: space-between;
@@ -393,6 +395,25 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
 .storico-prezzi td:last-child { text-align: right; }
 .voce-prezzo.stima { background: transparent; border: 1px dashed var(--bordo); color: var(--tenue); }
 .totale-spesa { color: var(--primario); }
+
+/* pranzo con gli avanzi della cena prima */
+.pasto-riga.avanzi .pasto-nome { color: var(--tenue); }
+
+/* gruppo "Da comprare sabato" in fondo alla lista */
+.compra-dopo { margin: 24px 0 0; padding-top: 14px; border-top: 2px dashed var(--bordo); font-size: 17px; color: var(--primario); }
+
+/* conferma dei prezzi alla fine della spesa (modalità negozio) */
+.conferma-prezzi { list-style: none; margin: 8px 0; padding: 0; }
+.conferma-prezzi li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--bordo); }
+.conferma-prezzi .voce { flex: 1; min-width: 0; }
+.conferma-prezzi input.prezzo-riga { width: 96px; flex: none; text-align: right; margin: 0; }
+
+/* Altro: piatti per tipo in una settimana */
+.tabella-tipi { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabella-tipi th, .tabella-tipi td { padding: 4px; text-align: left; }
+.tabella-tipi thead th { font-size: 12px; color: var(--tenue); font-weight: 600; }
+.tabella-tipi td { width: 76px; }
+.tabella-tipi input { width: 100%; }
 
 /* installazione sul telefono (Android e iPhone) */
 .invito-installa { background: var(--accento); color: var(--testo); }

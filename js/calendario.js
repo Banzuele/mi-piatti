@@ -154,6 +154,8 @@ export const IMPOSTAZIONI_PREDEFINITE = {
   maxTotale: 60,
   maxRipetizioni: 2,
   giornoSpesa: 6, // sabato
+  cenaDoppia: 0, // 1 = nei feriali la cena si fa anche per il pranzo del giorno dopo
+  budget: 0, // € a settimana, 0 = nessun budget
 };
 
 // giorniCasa: Map/oggetto data -> {tipo, nota}
