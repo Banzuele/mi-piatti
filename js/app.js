@@ -1075,7 +1075,7 @@ function salvaAggiungi(dati) {
 }
 
 function vistaSpesa() {
-  let h = navSettimana();
+  let h = navSettimana(true);
   const tutte = vociSpesa();
   const voci = spuntatiInFondo(tutte.filter((v) => S.mostraDispensa || v.tipo !== "dispensa" || v.extra));
   const presi = voci.filter((v) => v.fatto).length;
