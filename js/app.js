@@ -926,7 +926,7 @@ function vediRicetta(id, k) {
     ${r.link ? `<p><a href="${esc(linkSicuro(r.link))}" target="_blank" rel="noopener noreferrer">Apri la ricetta online ↗</a></p>` : ""}
     <div class="azioni-modale azioni-ricetta">
       <button class="btn" data-azione="modifica-ricetta" data-id="${esc(r.id)}">${ico("matita")} Modifica</button>
-      <button class="btn" data-azione="chiudi">Chiudi</button>
+      <button class="btn primario" data-azione="chiudi">Chiudi</button>
     </div>`);
 }
 
