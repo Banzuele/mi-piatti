@@ -546,7 +546,7 @@ function apriPasto(k) {
   apriModale(`<h2>${avanzi ? ico("avanzi") : PASTO[p].ico} ${PASTO[p].nome} · ${GIORNI_LUNGHI[giornoSettimana(d)]} ${formattaGiornoMese(d)}</h2>
     ${r ? `<p class="sottotitolo">${avanzi ? "Avanzi della cena di ieri: " : ""}${esc(r.nome)}</p>` : ""}
     <div class="lista-azioni">
-      ${r ? `<button class="btn largo" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${avanzi ? cenaDiIeri(k) : k}">${ico("libro")} Vedi ricetta e dosi</button>` : ""}
+      ${r ? `<button class="btn largo evidente" data-azione="vedi-ricetta" data-id="${esc(r.id)}" data-chiave="${avanzi ? cenaDiIeri(k) : k}">${ico("libro")} Vedi ricetta e dosi</button>` : ""}
       ${puoAvanzi ? `<button class="btn largo" data-azione="usa-avanzi" data-chiave="${k}">${ico("avanzi")} Usa gli avanzi della cena di ieri</button>` : ""}
       <button class="btn largo" data-azione="cambia" data-chiave="${k}">${ico("dado")} ${avanzi ? "Cucina un piatto (proposta automatica)" : "Cambia (proposta automatica)"}</button>
       <button class="btn largo" data-azione="scegli" data-chiave="${k}">${ico("elenco")} Scegli dall'elenco</button>
@@ -924,7 +924,7 @@ function vediRicetta(id, k) {
     ${r.procedimento?.length ? `<h3>Procedimento</h3>
     <ol class="procedimento">${r.procedimento.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>` : ""}
     ${r.link ? `<p><a href="${esc(linkSicuro(r.link))}" target="_blank" rel="noopener noreferrer">Apri la ricetta online ↗</a></p>` : ""}
-    <div class="azioni-modale">
+    <div class="azioni-modale azioni-ricetta">
       <button class="btn" data-azione="modifica-ricetta" data-id="${esc(r.id)}">${ico("matita")} Modifica</button>
       <button class="btn" data-azione="chiudi">Chiudi</button>
     </div>`);

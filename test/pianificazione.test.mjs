@@ -33,7 +33,7 @@ test("ricette: procedimento presente e ingredienti con dosi a porzione", () => {
 
 test("cene 1-30 riportate a porzione singola", () => {
   const pollo = ricettePerId.get("CEN04").ingredienti.find((i) => i.id === "AL33");
-  assert.equal(pollo.q, 200); // 500 g per famiglia / 2,5
+  assert.equal(pollo.q, 220); // 500 g per famiglia / 2,5, +10% (v26)
 });
 
 test("Pasqua e festività", () => {
@@ -93,15 +93,15 @@ test("spesa: somma porzioni e usa il pesce surgelato da martedì", () => {
   };
   const lista = calcolaSpesa({ piano, sabato: sab, ricettePerId, alimentiPerId });
   const v = (id) => lista.find((x) => x.id === id);
-  assert.equal(v("AL37").quantita, 500);
-  assert.equal(v("AL120").quantita, 500);
-  assert.equal(v("AL01").quantita, 120);
+  assert.equal(v("AL37").quantita, 550);
+  assert.equal(v("AL120").quantita, 550);
+  assert.equal(v("AL01").quantita, 140); // 132 g arrotondati alla decina
   // ordine reparti: verdure prima del banco frigo, congelati dopo
   const idx = (r) => lista.findIndex((x) => x.reparto === r);
   // porzioni cambiate a mano: la cena di sabato per 1 sola persona
   const ridotta = calcolaSpesa({ piano, sabato: sab, ricettePerId, alimentiPerId,
     porzioni: { [chiavePasto("2026-11-28", "cena")]: 1 } });
-  assert.equal(ridotta.find((x) => x.id === "AL37").quantita, 200);
+  assert.equal(ridotta.find((x) => x.id === "AL37").quantita, 220);
   assert.ok(idx("verdure") < idx("banco_frigo") && idx("banco_frigo") < idx("congelati"));
 });
 
@@ -194,7 +194,7 @@ test("cena doppia: nei feriali il pranzo sono gli avanzi della cena prima", asyn
   // la spesa compra la porzione in più con la cena del giorno prima
   const lista = calcolaSpesa({ piano: { "2026-12-01_cena": "CEN02", "2026-12-02_pranzo": "CEN02" },
     sabato: "2026-11-30", ricettePerId, alimentiPerId, avanzi: new Set(["2026-12-02_pranzo"]) });
-  assert.equal(lista.find((x) => x.id === "AL120").quantita, 700); // merluzzo surgelato 200 × 3,5
+  assert.equal(lista.find((x) => x.id === "AL120").quantita, 770); // merluzzo surgelato 220 × 3,5
 });
 
 test("budget: con un budget basso il menù costa meno", async () => {
