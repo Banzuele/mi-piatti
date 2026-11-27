@@ -1,6 +1,6 @@
 // Schermate di avvio per iPhone (apple-touch-startup-image): node strumenti/genera_splash.cjs
 // iOS non le ricava dal manifest: serve un'immagine per ogni misura di schermo.
-// Riproducono l'intro (icona + nome) così l'apertura non ha stacchi bianchi.
+// Riproducono l'intro (piatti + nome) così l'apertura non ha stacchi bianchi.
 // Scrive icons/splash/*.png e aggiorna i <link> in index.html tra i commenti SPLASH.
 const fs = require('fs');
 const path = require('path');
@@ -38,12 +38,15 @@ const TEMI = {
   for (const [w, h, d] of SCHERMI) {
     const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: d });
     for (const [nomeTema, t] of Object.entries(TEMI)) {
-      // stessa disposizione di .intro in css/stile.css (icona 160px, nome, riga di stato vuota)
+      // stessa disposizione di .intro in css/stile.css: solo i piatti (233px) al centro
+      // esatto, nome sotto; la riga di stato resta vuota
+      const piatti = icona.replace(/<rect[^>]*\/>/, '').replace('<svg ', '<svg width="233" height="233" ');
       await p.setContent(`<html><body style="margin:0;background:${t.sfondo}">
-        <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:16px/1.4 -apple-system,system-ui,sans-serif">
-          <div style="width:160px;height:160px;border-radius:35px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.28)">${icona.replace('<svg ', '<svg width="160" height="160" ')}</div>
-          <p style="margin:14px 0 0;font-size:22px;font-weight:700;color:${t.nome}">Mi-Piatti</p>
-          <p style="margin:0;font-size:14px;min-height:1.4em"></p>
+        <div style="position:fixed;inset:0;font:16px/1.4 -apple-system,system-ui,sans-serif">
+          <div style="position:absolute;left:50%;top:50%;width:233px;height:233px;margin:-116.5px 0 0 -116.5px">${piatti}</div>
+          <div style="position:absolute;left:16px;right:16px;top:calc(50% + 132px);text-align:center">
+            <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:${t.nome}">Mi-Piatti</p>
+          </div>
         </div></body></html>`);
       const file = `splash-${w * d}x${h * d}-${nomeTema}.png`;
       await p.screenshot({ path: path.join(dest, file) });

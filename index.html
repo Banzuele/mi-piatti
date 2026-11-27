@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it" data-versione="v27">
+<html lang="it" data-versione="v28">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -40,8 +40,9 @@
 </head>
 <body>
   <div id="intro" class="intro" role="status" aria-live="polite">
+    <!-- solo i piatti, senza il quadrato: stessa misura e posizione della schermata
+         di avvio di Android (icona maskable nel cerchio di 240dp, al centro) -->
     <svg class="intro-icona" viewBox="0 0 512 512" aria-hidden="true">
-      <rect width="512" height="512" rx="112" fill="#2f6b4f"/>
       <circle cx="197.3" cy="279.0" r="108.9" fill="#1d4532" opacity=".55"/>
       <circle cx="354.8" cy="152.3" r="76.2" fill="#1d4532" opacity=".55"/>
       <circle cx="327.3" cy="393.6" r="52.6" fill="#1d4532" opacity=".55"/>
@@ -61,8 +62,10 @@
         <circle cx="325.2" cy="389.4" r="39.6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="34.8 248.8" opacity=".7"/>
       </g>
     </svg>
-    <p class="intro-nome">Mi-Piatti</p>
-    <p class="intro-stato" id="intro-stato">Cerco aggiornamenti…</p>
+    <div class="intro-testi">
+      <p class="intro-nome">Mi-Piatti</p>
+      <p class="intro-stato" id="intro-stato">Cerco aggiornamenti…</p>
+    </div>
     <small class="intro-versione" id="intro-versione"></small>
   </div>
 

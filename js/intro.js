@@ -8,6 +8,18 @@
   var versione = document.documentElement.dataset.versione || "";
   document.getElementById("intro-versione").textContent = "Mi-Piatti " + versione;
 
+  // Android: la schermata di avvio è centrata sull'intero schermo, la pagina invece
+  // parte sotto la barra di stato e finisce sopra la barra dei gesti. Si alzano i
+  // piatti della differenza, così restano fermi nello stesso punto (barra dei gesti
+  // stimata 24px, il resto è la barra di stato). Su iPhone la pagina copre già tutto.
+  try {
+    var tot = screen.height - window.innerHeight;
+    if (/Android/.test(navigator.userAgent) && matchMedia("(display-mode: standalone)").matches && tot > 0 && tot < 160) {
+      var basso = Math.min(24, tot / 3);
+      intro.style.setProperty("--intro-dy", -((tot - basso) - basso) / 2 + "px");
+    }
+  } catch (e) { /* niente */ }
+
   var DURATA_MINIMA = 1400; // almeno un giro completo dei piatti
   var ATTESA_MASSIMA = 4000; // con rete lenta non si aspetta oltre
 
