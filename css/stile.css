@@ -164,6 +164,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.pericolo { color: var(--pericolo); }
 .btn.piccolo { min-height: 32px; padding: 4px 10px; font-size: 14px; }
 .btn.largo { width: 100%; text-align: left; }
+/* pop-up del pasto: "Vedi ricetta e dosi" più grande degli altri tasti */
+.btn.largo.evidente { min-height: 56px; padding: 14px 16px; font-size: 18px; font-weight: 600; background: var(--p-menta); border-color: var(--primario); }
+/* scheda ricetta: "Chiudi" più largo di "Modifica" */
+.azioni-ricetta .btn { flex: 1; }
+.azioni-ricetta .btn[data-azione="chiudi"] { flex: 2; font-weight: 600; }
 .btn-ico {
   border: 0; background: var(--accento); border-radius: 50%;
   width: 44px; height: 44px; font-size: 24px; line-height: 1; cursor: pointer; flex: none;
@@ -502,24 +507,27 @@ fieldset.stagioni legend { font-size: 14px; color: var(--tenue); padding: 0 4px;
 .ingr-riga .unita { width: 28px; font-size: 13px; color: var(--tenue); }
 .nuovo-alimento { background: var(--accento); border-radius: 10px; padding: 10px; margin: 8px 0; }
 
-/* intro all'apertura: piatti che girano mentre si cercano aggiornamenti */
+/* intro all'apertura: piatti che girano mentre si cercano aggiornamenti.
+   Sfondo verde fisso (anche in tema scuro), uguale al background_color del manifest
+   e alle schermate di avvio iPhone: la schermata di avvio del telefono e l'intro
+   sembrano una sola schermata. */
 .intro {
   position: fixed; inset: 0; z-index: 100;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  background: var(--sfondo); color: var(--testo);
+  background: #2f6b4f; color: #ffffff;
   transition: opacity .35s ease, visibility .35s;
 }
 .intro.chiusa { opacity: 0; visibility: hidden; pointer-events: none; }
 .ricaricata .intro { display: none; }
-.intro-icona { width: 160px; height: 160px; border-radius: 35px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
+.intro-icona { width: 160px; height: 160px; border-radius: 35px; box-shadow: 0 8px 24px rgba(0, 0, 0, .28); }
 .intro .piatto {
   transform-box: fill-box; transform-origin: center;
   animation: intro-giro 1.2s cubic-bezier(.45, .05, .35, 1) infinite;
 }
 @keyframes intro-giro { to { transform: rotate(360deg); } }
-.intro-nome { margin: 14px 0 0; font-size: 22px; font-weight: 700; color: var(--primario); }
-.intro-stato { margin: 0; font-size: 14px; color: var(--tenue); min-height: 1.4em; }
-.intro-versione { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); font-size: 12px; color: var(--tenue); }
+.intro-nome { margin: 14px 0 0; font-size: 22px; font-weight: 700; color: #ffffff; }
+.intro-stato { margin: 0; font-size: 15px; color: rgba(255, 255, 255, .9); min-height: 1.4em; }
+.intro-versione { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); font-size: 12px; color: rgba(255, 255, 255, .75); }
 
 /* prezzi nella spesa */
 .voce-prezzo {
